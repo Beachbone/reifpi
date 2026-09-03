@@ -1,10 +1,21 @@
 [Unit]
 Description=ReifungsPi — Weiterleitung von Port 80 auf :5000 (reifpi-redirect)
 Documentation=https://github.com/Beachbone/reifpi
-After=network.target
+After=network.target nginx.service apache2.service lighttpd.service httpd.service
 # Kein "Requires=reifpi.service" — der Redirect soll auch dann funktionieren
 # (bzw. sich zumindest gefahrlos zurückziehen), wenn der Hauptdienst gerade
 # neu startet.
+#
+# Die After=-Zeile ist kein Zufall: Ohne sie wäre der Start ein reiner
+# Wettlauf mit einem eventuell installierten "echten" Webserver, und da
+# dieser Dienst nichts außer Stdlib lädt, würde er das Rennen meistens
+# GEWINNEN — also genau falsch herum. Diese Liste deckt die gängigen
+# Webserver ab (nginx/Apache/lighttpd/generisches httpd) und sorgt dafür,
+# dass reifpi-redirect erst NACH ihnen startet, falls installiert+aktiviert.
+# Ist keiner davon vorhanden, wird die Abhängigkeit einfach ignoriert.
+# Für Webserver, die hier nicht gelistet sind, greift weiterhin die
+# Bind-Retry-Schleife in redirect.py als Sicherheitsnetz — aber ohne
+# Ordering-Garantie.
 
 [Service]
 Type=simple

@@ -1,3 +1,16 @@
+reifpi (0.1.3) unstable; urgency=medium
+
+  * Fix: reifpi-redirect.service startete ohne Ordering-Garantie
+    gegenüber einem eventuell installierten echten Webserver — da der
+    Redirect-Dienst minimal ist (nur Stdlib, kein Config-Parsing),
+    hätte er den Wettlauf um Port 80 beim Boot meistens GEWONNEN,
+    also genau falsch herum. After= jetzt explizit auf
+    nginx/apache2/lighttpd/httpd gesetzt, damit reifpi-redirect erst
+    nach einem installierten echten Webserver startet (falls keiner
+    installiert ist, wird die Abhängigkeit ignoriert).
+
+ -- Jürgen Auerbach <J.Auerbach@b50.de>  Thu, 03 Sep 2026 21:31:21 +0200
+
 reifpi (0.1.2) unstable; urgency=medium
 
   * Neuer optionaler Dienst reifpi-redirect.service: leitet Port 80 per
