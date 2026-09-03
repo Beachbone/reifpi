@@ -6,3 +6,12 @@ venv/
 *.db-wal
 instance/
 .DS_Store
+
+# dpkg-buildpackage-Artefakte (Staging-Verzeichnis, generierte Metadaten)
+debian/.debhelper/
+debian/reifpi/
+debian/files
+debian/debhelper-build-stamp
+debian/*.substvars
+debian/*.debhelper
+debian/*.debhelper.log

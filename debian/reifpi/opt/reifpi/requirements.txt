@@ -1,7 +1,0 @@
-Flask>=3.0
-gunicorn>=21.0
-smbus2>=0.4
-gpiozero>=2.0
-pymysql>=1.1       # Nur für einmalige Migration (migrate_from_mariadb.py)
-# Für Tests ohne Hardware:
-# gpiozero[mock]
