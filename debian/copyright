@@ -1,0 +1,12 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: reifpi
+Source: https://github.com/Beachbone/reifpi
+
+Files: *
+Copyright: 2026 Jürgen Auerbach <J.Auerbach@b50.de>
+License: TODO-NOCH-NICHT-FESTGELEGT
+ Lizenzwahl steht noch aus (offener Punkt aus der Planungsrunde) — die
+ alte PHP-Vorgängerversion stand unter GPLv2, reifpi ist aber ein
+ vollständiger Neuschrieb. Vor dem ersten öffentlichen Release muss hier
+ eine echte Lizenz (z.B. MIT, GPLv3, AGPLv3) eingetragen und der
+ zugehörige Volltext ergänzt werden.

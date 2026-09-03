@@ -1,0 +1,18 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	# Kein Build-Schritt — reines Python. Dependencies kommen im postinst
+	# per pip in ein venv (siehe debian/postinst).
+
+override_dh_auto_test:
+	# Keine automatisierten Tests im Paket-Build; tests/ ist für manuelle
+	# Läufe während der Entwicklung gedacht.
+
+override_dh_auto_install:
+	mkdir -p debian/reifpi/opt/reifpi
+	cp -r app debian/reifpi/opt/reifpi/
+	cp run.py requirements.txt debian/reifpi/opt/reifpi/
+	find debian/reifpi/opt/reifpi -name '__pycache__' -type d -exec rm -rf {} +

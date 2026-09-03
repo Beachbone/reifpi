@@ -1,0 +1,69 @@
+#!/bin/sh
+# postinst — reifpi (ReifungsPi)
+#
+# Legt einen dedizierten System-User an (ersetzt das alte hart codierte
+# User=pi), richtet FHS-konforme Verzeichnisse ein und installiert die
+# Python-Abhängigkeiten live per pip in ein venv (apt install braucht
+# ohnehin schon Internet für das Paket selbst, siehe Planungsrunde).
+
+set -e
+
+REIFPI_USER=reifpi
+REIFPI_HOME=/opt/reifpi
+DATA_DIR=/var/lib/reifpi
+LOG_DIR=/var/log/reifpi
+CONF_DIR=/etc/reifpi
+SECRET_FILE="$CONF_DIR/secret_key.env"
+
+case "$1" in
+  configure)
+    # ── Dedizierter System-User ──────────────────────────────────────────
+    if ! getent group "$REIFPI_USER" >/dev/null; then
+        addgroup --system "$REIFPI_USER"
+    fi
+    if ! getent passwd "$REIFPI_USER" >/dev/null; then
+        adduser --system --ingroup "$REIFPI_USER" --home "$REIFPI_HOME" \
+            --no-create-home --disabled-password --shell /usr/sbin/nologin \
+            "$REIFPI_USER"
+    fi
+    # Zugriff auf GPIO/I2C-Hardware (Gruppen existieren nicht auf jedem
+    # System, deshalb einzeln prüfen statt blind hinzuzufügen).
+    for grp in gpio i2c spi dialout; do
+        if getent group "$grp" >/dev/null; then
+            adduser "$REIFPI_USER" "$grp" >/dev/null
+        fi
+    done
+
+    # ── FHS-Verzeichnisse ─────────────────────────────────────────────────
+    mkdir -p "$DATA_DIR" "$LOG_DIR" "$CONF_DIR"
+    chown "$REIFPI_USER:$REIFPI_USER" "$DATA_DIR" "$LOG_DIR" "$CONF_DIR"
+    chmod 750 "$DATA_DIR" "$LOG_DIR" "$CONF_DIR"
+
+    # ── Zufälliger Secret-Key pro Installation ───────────────────────────
+    # Nur beim allerersten Install erzeugen, bei Upgrades nicht anfassen
+    # (sonst würden bestehende Flask-Sessions ungültig).
+    if [ ! -f "$SECRET_FILE" ]; then
+        SECRET="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
+        printf 'REIFPI_SECRET_KEY=%s\n' "$SECRET" > "$SECRET_FILE"
+        chown "$REIFPI_USER:$REIFPI_USER" "$SECRET_FILE"
+        chmod 600 "$SECRET_FILE"
+    fi
+
+    # ── venv + Python-Abhängigkeiten ─────────────────────────────────────
+    if [ ! -x "$REIFPI_HOME/venv/bin/python3" ]; then
+        python3 -m venv "$REIFPI_HOME/venv"
+    fi
+    "$REIFPI_HOME/venv/bin/pip" install --upgrade pip --quiet
+    "$REIFPI_HOME/venv/bin/pip" install -r "$REIFPI_HOME/requirements.txt" --quiet
+    ;;
+
+  abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+  *)
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

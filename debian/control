@@ -1,0 +1,25 @@
+Source: reifpi
+Section: python
+Priority: optional
+Maintainer: Jürgen Auerbach <J.Auerbach@b50.de>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://reifeschrank.b50.de
+Rules-Requires-Root: no
+
+Package: reifpi
+Architecture: all
+Depends: ${misc:Depends},
+         python3 (>= 3.9),
+         python3-venv,
+         python3-pip,
+         systemd,
+Recommends: i2c-tools
+Description: ReifungsPi — Steuerung für Reifeschränke (Käse, Salami, Dry-Aging)
+ Flask-basierte Steuerung für Raspberry-Pi-gesteuerte Reifeschränke und
+ Reifekammern. Regelt Temperatur und Luftfeuchtigkeit über I2C-Sensoren
+ (SHT31, AHT21, BME280) und Relais (Kühlung, Heizung, Befeuchter, Lüfter)
+ für die Reifung von Käse, Salami, Schinken und anderen Rohwaren.
+ .
+ Enthält ein Web-Interface (Dashboard, Reifeprogramme, Archiv, Einstellungen)
+ sowie optionale E-Mail-/ntfy-Benachrichtigungen.
