@@ -24,7 +24,16 @@ case "$1" in
     fi
     ;;
 
-  remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+  remove)
+    # venv wird von postinst zur Laufzeit erzeugt (pip-Install), dpkg
+    # kennt diese Dateien also nicht und würde sie sonst als mehrere MB
+    # großen Rest liegen lassen. Nutzdaten (DATA_DIR/LOG_DIR/CONF_DIR)
+    # bleiben bewusst stehen — das ist kein Programm-Bestandteil,
+    # sondern gehört dem Nutzer.
+    rm -rf "$REIFPI_HOME/venv"
+    ;;
+
+  upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
     ;;
 
   *)

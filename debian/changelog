@@ -1,3 +1,20 @@
+reifpi (0.1.4) unstable; urgency=medium
+
+  * Fix: "apt remove" ließ das von postinst per pip erzeugte venv
+    (mehrere MB) liegen — dpkg kennt diese Dateien nicht, da sie nicht
+    Teil des Pakets sind, sondern erst zur Laufzeit entstehen. postrm
+    räumt das venv jetzt schon bei "remove" auf, nicht erst bei
+    "purge" (Nutzdaten in /var/lib, /var/log, /etc bleiben weiterhin
+    bewusst bis "purge" stehen).
+    Gefunden beim ersten echten "apt remove"-Test auf dem Test-Pi.
+    (Der dabei ebenfalls beobachtete tote systemd-Enable-Symlink ist
+    kein Bug, sondern beabsichtigtes Debian-Verhalten — deb-systemd-
+    helper hebt die "aktiviert"-Markierung bewusst nur bei "purge"
+    auf, damit eine spätere Neuinstallation den vorherigen Zustand
+    automatisch wiederherstellt.)
+
+ -- Jürgen Auerbach <J.Auerbach@b50.de>  Thu, 03 Sep 2026 21:41:45 +0200
+
 reifpi (0.1.3) unstable; urgency=medium
 
   * Fix: reifpi-redirect.service startete ohne Ordering-Garantie
