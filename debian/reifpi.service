@@ -42,6 +42,11 @@ RestartSec=5
 NoNewPrivileges=true
 ProtectSystem=strict
 ReadWritePaths=/var/lib/reifpi /var/log/reifpi
+# PrivateTmp gehört zwingend zu ProtectSystem=strict dazu: ohne eigenes,
+# beschreibbares /tmp bricht u.a. gunicorns gthread-Worker (braucht ein
+# Tempfile fürs Heartbeat) mit "No usable temporary directory found" ab —
+# genau das ist im ersten Testdeploy auf dem Pi tatsächlich passiert.
+PrivateTmp=true
 
 [Install]
 WantedBy=multi-user.target
