@@ -1,0 +1,852 @@
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #333; /* Heller Hintergrund */
+    margin: 0;
+}
+@font-face {
+    font-family: 'Digital-7';
+    src: url("../fonts/digital-7.ttf") format('truetype');
+    /* Stellen Sie sicher, dass der Pfad zur Schriftart korrekt ist! */
+    font-weight: normal;
+    font-style: normal;
+}
+
+
+/* Anzeige der Rückmeldungen bei der Datenübertragung */
+/* --- Nachrichten-Container --- */
+.message-container {
+    position: fixed; /* Fixiert am Bildschirm */
+    top: 20px;       /* 20px vom oberen Rand */
+    left: 50%;       /* Horizontal zentriert */
+    transform: translateX(-50%); /* Exakte horizontale Zentrierung */
+    padding: 10px 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    z-index: 1000;   /* Stellt sicher, dass es über anderen Elementen liegt */
+    opacity: 0;      /* Standardmäßig unsichtbar */
+    visibility: hidden; /* Standardmäßig nicht interaktiv */
+    transition: opacity 0.5s ease-in-out, visibility 0.5s ease-in-out; /* Weiche Übergänge */
+    min-width: 250px;
+    text-align: center;
+    color: white; /* Standard Textfarbe */
+    font-weight: bold;
+}
+
+.message-container.show {
+    opacity: 1;      /* Sichtbar machen */
+    visibility: visible;
+}
+
+/* Stil für Erfolgsmeldungen */
+.message-container.success {
+    background-color: #4CAF50; /* Grün */
+}
+
+/* Stil für Fehlermeldungen */
+.message-container.error {
+    background-color: #f44336; /* Rot */
+}
+
+/* Stil für Warnmeldungen (falls benötigt) */
+.message-container.warning {
+    background-color: #ff9800; /* Orange */
+}
+.message-container.info {
+    background-color: #90d4ed; /* Ein deutlicheres, aber immer noch freundliches Blau */
+    color: #000000; /* Schwarzer Text für besseren Kontrast */
+    border: 1px solid #3498db; /* Eine kräftigere blaue Umrandung */
+    font-weight: bold; /* Text fett machen, damit er mehr auffällt */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15); /* Leichter Schatten für mehr Tiefe */
+}
+
+/* Bereich für die Ausgabe */
+
+.control-panel {
+    background-color: #333; /* Dunkleres Panel */
+    color: #eee;
+    padding: 0px 15px 0px 15px;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 1000px; /* Beispielbreite */
+    margin: 8px;
+}
+
+h1, h3 {
+    font-size: clamp(1em, 3vw, 2em); /* Kleinste Größe, responsive Größe, Größte Größe */
+
+    text-align: center;
+    color: #00bcd4; /* Akzentfarbe */
+}
+
+.seven-segment {
+    font-family: 'Digital-7', monospace; /* Fallback zu monospace */
+    color: #00ff00; /* Grün für die Anzeige, wie bei vielen 7-Segmenten */
+    text-shadow: 0 0 5px rgba(0, 255, 0, 0.7); /* Leichter Leuchteffekt */
+    letter-spacing: 2px; /* Kann helfen, die Segmente zu trennen */
+}
+
+.display-section {
+    display: flex;
+    justify-content: space-around;
+    background-color: #222;
+    padding: 15px;
+    border-radius: 8px;
+    background: linear-gradient(170deg,rgba(40, 40, 60, 1) 0%, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 1) 70%, rgba(40,40,60)100%);
+    box-shadow: inset 0px 1px 8px 2px;
+}
+
+
+.value-display {
+    display: flex; /* Flexbox für vertikale Anordnung */
+    flex-direction: column;
+    align-items: center; /* Zentriert horizontal */
+    text-align: center; /* Text innerhalb des Spans zentrieren */
+    padding: 10px 15px;
+    border-radius: 5px;
+    min-width: 80px; /* Mindestbreite, damit alles reinpasst */
+}
+
+.value-display .label {
+   font-size: clamp(0.8em, 2vw, 1.6em); /* Kleinste Größe, responsive Größe, Größte Größe */
+    color: #aaa; /* Helleres Grau für die Beschriftung */
+    margin-bottom: 5px;
+}
+
+.display-set-value {
+    font-size: clamp(1em, 4vw, 2em); /* Kleinste Größe, responsive Größe, Größte Größe */
+    margin-bottom: 5px; /* Etwas Abstand zum aktuellen Wert */
+    color: #88ff88; /* Etwas helleres Grün für den Sollwert */
+}
+
+.display-current-value {
+    font-size: clamp(1.5em, 8vw, 4em); /* Kleinste Größe, responsive Größe, Größte Größe */
+}
+.value-display {
+    text-align: center;
+}
+
+.display-value {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: #00ff00; /* Grüne Anzeige */
+    display: block;
+    margin-top: 5px;
+}
+
+
+/* Einstellungsbereiche (Sollwerte, Hysterese) */
+/* Dies ist der allgemeine Container-Stil für beide Gruppen */
+.setting-group,
+.setting-group-hysteresis {
+    background-color: #444; /* Etwas heller als Panel-Hintergrund */
+    padding: 5px;
+    border-radius: 8px;
+    margin-bottom: 5px; /* Etwas Abstand zum nächsten Block */
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3); /* Angepasster Schatten */
+    background: linear-gradient(170deg,
+		rgba(20, 20, 40, 1) 0%,
+		rgba(0, 0, 0, 1) 50%,
+		rgba(0, 0, 0, 1) 70%,
+		rgba(20,20,40)100%);
+	box-shadow: inset 0px 1px 8px 2px;
+}
+
+.setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+input[type="number"] {
+    width: 80px;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #555;
+    background-color: #666;
+    color: #fff;
+    text-align: right;
+}
+
+/* Stellen Sie sicher, dass diese Abschnitte wie zuvor definiert sind */
+.status-leds {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 15px;
+    background-color: #222;
+    border-radius: 8px;
+    gap: 15px;
+}
+.leds-and-pictograms-grid {
+    display: flex; /* Wechsel von grid zu flex */
+    flex-wrap: wrap; /* Erlaubt das Umbrechen in die nächste Reihe, wenn der Platz nicht ausreicht */
+    justify-content: center; /* Zentriert die Elemente horizontal */
+    gap: 5px; /* Abstand zwischen den einzelnen Status-Items */
+    width: 100%; /* Nutzen Sie die volle Breite des Elterncontainers */
+    min-width: 200px; /* **WICHTIG:** Eine Mindestbreite, damit 6 Items bequem in eine Reihe passen. Passen Sie diesen Wert an! */
+}
+
+
+/* NEU: Container für die Gruppierung der Status-Buttons */
+.status-buttons-group {
+    display: flex; /* Verwende Flexbox für die Anordnung */
+    flex-wrap: wrap; /* Ermöglicht das Umbrechen der Elemente in die nächste Zeile */
+    justify-content: center;
+    align-items: flex-start; /* Elemente oben in der Zeile ausrichten */
+    gap: 10px; /* Abstand zwischen den einzelnen Status-Items */
+    width: 100%; /* Der Container nimmt die volle Breite ein */
+    margin-top: 15px; /* Etwas Abstand zu den oberen Einstellungsfeldern */
+    padding: 0 5px; /* Optional: Leichter Innenabstand, wenn der Container nicht ganz am Rand kleben soll */
+}
+
+
+/* Kombinierte und optimierte .status-item Regel */
+.status-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center; /* Zentriert Inhalt vertikal im Item */
+    gap: 5px;
+    background-color: #3a3a3a; /* Einheitlicher Hintergrund */
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.4); /* Einheitlicher Schatten */
+    position: relative; /* WICHTIG für die absolute Positionierung der Checkbox */
+    overflow: hidden; /* Sicherstellen, dass nichts außerhalb des Bereichs ragt */
+    min-width: 60px; /* Mindestbreite für jedes Status-Item */
+    flex-basis: auto; /* Standardwert, lässt Flexbox die Größe basierend auf Inhalt anpassen */
+}
+
+.led {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: #555; /* Ausgeschaltet */
+    border: 1px solid #777;
+    flex-shrink: 0;
+}
+
+.led.active { /* Aktiver Zustand der LED */
+    background-color: #00ff00; /* Grün für aktive LEDs */
+    box-shadow: 0 0 8px #00ff00;
+}
+
+.status-item img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    filter: grayscale(100%) brightness(50%); /* Inaktiver Zustand */
+    transition: filter 0.3s ease;
+}
+
+/* Kombinierte und optimierte .control-buttons Regel */
+.control-buttons {
+    display: flex;
+    flex-wrap: wrap; /* Erlaubt das Umbrechen von Elementen in neue Reihen */
+    justify-content: space-around; /* Verteilt die Elemente gleichmäßig mit Platz dazwischen */
+    gap: 15px; /* Einheitlicher Abstand zwischen den Elementen */
+    margin-top: 10px;
+}
+
+.status-item img.pictogram-active {
+    filter: grayscale(0%) brightness(100%); /* Aktiver Zustand */
+}
+
+/* Globale Anpassung der Plus/Minus-Buttons auf 30px */
+.control-button {
+    background-color: #00bcd4; /* Akzentfarbe */
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    width: 30px; /* **Wichtig:** Breite der Buttons auf 30px */
+    height: 30px; /* **Wichtig:** Höhe der Buttons auf 30px */
+    font-size: 1.4em; /* Angepasste Schriftgröße für die 30px Buttons */
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+    transition: background-color 0.2s ease;
+    touch-action: manipulation;
+}
+.control-button:active {
+    background-color: #008ba7;
+    /* justify-content: space-around; */ /* Entfernt, da es hier keinen Sinn macht */
+}
+
+button {
+    padding: 10px 20px;
+    background-color: #00bcd4; /* Akzentfarbe */
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1em;
+    transition: background-color 0.8s ease;
+}
+
+button:hover {
+    background-color: #0097a7;
+}
+
+.input-with-controls {
+    display: flex; /* Nutzt Flexbox, um die Elemente in einer Reihe anzuordnen */
+    align-items: center; /* Zentriert sie vertikal */
+    gap: 5px; /* Abstand zwischen Buttons und Input */
+}
+
+.setting-item input[type="number"] {
+    /* Passen Sie die Breite an, damit sie gut in die Reihe passt und groß genug ist */
+    width: 80px; /* Oder größer, z.B. 100px */
+    padding: 8px 5px; /* Mehr Padding für bessere Antipperkennung */
+    font-size: 1.1em; /* Größere Schrift im Input */
+    text-align: center; /* Wert zentriert im Input */
+    -moz-appearance: textfield; /* Entfernt die nativen Stepper-Pfeile in Firefox */
+    appearance: textfield; /* Entfernt die nativen Stepper-Pfeile */
+}
+
+/* Versteckt die standardmäßigen Pfeile für input type="number" in Webkit/Blink Browsern (Chrome, Safari, Edge) */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+/* Versteckt die standardmäßigen Pfeile für input type="number" in Firefox */
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+.control-button {
+    background-color: #00bcd4; /* Passend zur Akzentfarbe */
+    color: #fff;
+    border: none;
+    border-radius: 5px; /* Leichte Rundung */
+    width: 30px; /* Breite der Buttons */
+    height: 30px; /* Höhe der Buttons, für große Touch-Fläche */
+    font-size: 1.4em; /* Größe des Plus/Minus-Zeichens */
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0; /* Verhindert, dass der Button schrumpft */
+    transition: background-color 0.2s ease;
+    touch-action: manipulation; /* **NEU:** Optimiert Touch-Interaktion für Buttons */
+}
+
+.control-button:active { /* Feedback beim Tippen */
+    background-color: #008ba7;
+    /* justify-content: space-around; */ /* Entfernt, da es hier keinen Sinn macht */
+}
+
+.control-button.minus {
+    background-color: #e74c3c;
+}
+.control-button.minus:active {
+    background-color: #c0392b;
+    /* justify-content: right; */ /* Entfernt, da es hier keinen Sinn macht */
+}
+
+
+/* --- SELEKTOREN FÜR SOLLWERTE UND HYSTERESE-GRUPPEN (Layout & Styling) --- */
+
+/* Gemeinsamer Stil für Sollwert- und Hysterese-Gruppen-Container (das 2-Spalten-Grid) */
+.setting-group:first-of-type,
+.setting-group-hysteresis {
+    display: grid; /* Verwendet CSS Grid für die Spaltenaufteilung */
+    grid-template-columns: 1fr 1fr; /* Zwei Spalten, die den verfügbaren Platz gleichmäßig aufteilen */
+    gap: 5px; /* Abstand zwischen den Spalten und Zeilen */
+    align-items: start; /* Richtet die Elemente oben in ihrer Zelle aus */
+    padding-bottom: 10px; /* Etwas Platz am unteren Rand der Gruppe */
+}
+
+/* Anpassung der einzelnen Sollwert-Einträge: Label über Input */
+.setting-group:first-of-type .setting-item {
+    display: flex; /* Macht das Item selbst zu einer Flexbox */
+    flex-direction: column; /* Label über Input-Controls */
+    align-items: center; /* Zentriert Label und Input-Controls horizontal */
+    gap: 8px; /* Abstand zwischen Label und Input-Controls */
+    margin-bottom: 0; /* Entfernt den vorherigen Margin, da das Grid Gap übernimmt */
+    padding: 3px; /* Leichter Innenabstand, um es als Block hervorzuheben */
+    border-radius: 8px; /* Abgerundete Ecken */
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.4); /* Leichter Innenschatten */
+}
+
+/* Anpassung der einzelnen Hysterese-Einträge: Input über Label */
+.setting-group-hysteresis .setting-item {
+    display: flex; /* Macht das Item selbst zu einer Flexbox */
+    flex-direction: column; /* **Wichtig:** Input-Controls unter Label */
+    align-items: center; /* Zentriert Input und Label horizontal */
+    gap: 8px; /* Abstand zwischen Label und Input-Controls */
+    margin-bottom: 0; /* Entfernt den vorherigen Margin, da das Grid Gap übernimmt */
+    padding: 3px; /* Leichter Innenabstand, um es als Block hervorzuheben */
+    border-radius: 8px; /* Abgerundete Ecken */
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.4); /* Leichter Innenschatten */
+}
+
+/* Beschriftung in Sollwert- und Hysterese-Bereichen */
+.setting-group:first-of-type .setting-item label,
+.setting-group-hysteresis .setting-item label {
+    font-size: clamp(0.9em, 2vw, 1.9em);
+
+    color: #00bcd4; /* Akzentfarbe für die Beschriftung */
+    white-space: nowrap; /* Verhindert Zeilenumbruch, um Platz zu sparen */
+    margin-bottom: 0; /* Gap regelt den Abstand */
+}
+
+/* Input mit Plus/Minus-Tasten als Gruppe */
+.input-with-controls {
+    display: flex; /* Stellt sicher, dass Buttons und Input nebeneinander sind */
+    align-items: center;
+    gap: 5px; /* Abstand zwischen Input und Buttons */
+    flex-shrink: 0; /* Verhindert das Schrumpfen */
+}
+
+/* Input-Felder innerhalb der Input-mit-Controls-Gruppen (für Sollwerte & Hysterese) */
+.setting-group:first-of-type .setting-item .input-with-controls input[type="number"],
+.setting-group-hysteresis .setting-item .input-with-controls input[type="number"] {
+    width: 30px; /* Kompaktere Breite für das Input-Feld */
+    padding: 6px 8px; /* Reduziertes Padding für Kompaktheit */
+    font-size: 1em; /* Kompaktere Schriftgröße */
+    background-color: #666; /* Angepasster Input-Hintergrund */
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 4px;
+    text-align: center; /* Zentriert den Wert */
+}
+
+/* --- MEDIA QUERIES FÜR RESPONSIVITÄT --- */
+
+/* Allgemeine Anpassungen für kleinere Bildschirme (z.B. Tablet-Hochformat und alle Smartphones) */
+@media (max-width: 1024px) {
+    .control-panel {
+        width: 100%;
+        margin: 10px;
+        border-radius: 0;
+    }
+}
+
+/* Anpassungen für kleinere Tablets und größere Smartphones (z.B. unter 768px) */
+@media (max-width: 767px) {
+    .value-display {
+        min-width: unset;
+        width: 100%;
+    }
+
+    /* Hauptzeile: flex-Elemente gleichmäßig verteilen statt 100%-Breite */
+    .display-section:not(.extern-section) {
+        flex-wrap: nowrap;
+    }
+    .display-section:not(.extern-section) .value-display {
+        width: auto;
+        flex: 1;
+    }
+    .display-section:not(.extern-section) .value-display-small {
+        flex: 0 0 auto;
+    }
+
+    /* Input und Buttons etwas größer im 2-Spalten-Modus für Touch-Bedienung */
+    .setting-group:first-of-type .setting-item .input-with-controls input[type="number"],
+    .setting-group-hysteresis .setting-item .input-with-controls input[type="number"] {
+        width: 40px;
+        font-size: 1.1em;
+    }
+    .setting-group:first-of-type .setting-item .control-button,
+    .setting-group-hysteresis .setting-item .control-button {
+        width: 35px;
+        height: 35px;
+        font-size: 1.6em;
+    }
+    /* Status-Items für LEDs/Piktogramme auch leicht anpassen */
+    .status-item img {
+        width: 35px;
+        height: 35px;
+    }
+    .led {
+        width: 16px;
+        height: 16px;
+    }
+}
+
+/* Hier kommt der entscheidende Breakpoint: Weniger als 350px Breite */
+@media (max-width: 349px) { /* Trigger bei 349px, damit 350px noch 2 Spalten hat */
+    /* NEU: Anzeige von Temperatur und Luftfeuchtigkeit schaltet auf 1 Spalte */
+    .display-section {
+        flex-direction: column; /* Anzeige untereinander */
+        gap: 10px;
+    }
+
+    /* Schaltet die Einstellungsgruppen auf EINE Spalte um */
+    .setting-group:first-of-type,
+    .setting-group-hysteresis {
+        grid-template-columns: 1fr; /* Eine Spalte */
+        gap: 15px; /* Angepasster Abstand für die einzelne Spalte */
+    }
+
+    /* Im Ein-Spalten-Modus können die Input-Felder etwas breiter sein, da mehr vertikaler Platz */
+    .setting-group:first-of-type .setting-item .input-with-controls input[type="number"],
+    .setting-group-hysteresis .setting-item .input-with-controls input[type="number"] {
+        width: 80px;
+        font-size: 1.2em;
+    }
+    /* Buttons auch wieder etwas größer */
+    .setting-group:first-of-type .setting-item .control-button,
+    .setting-group-hysteresis .setting-item .control-button {
+        width: 45px;
+        height: 45px;
+        font-size: 2em;
+    }
+    /* Kleinere Anpassungen für LED/Piktogramm für sehr schmale Ansicht */
+    .status-item img {
+        width: 30px;
+        height: 30px;
+    }
+    .led {
+        width: 14px;
+        height: 14px;
+    }
+
+    .control-buttons button {
+        padding: 8px 15px;
+        font-size: 1em;
+    }
+}
+
+
+/* Bereich für das Manuelle Schalten der Ausgänge */
+.manual-control-checkbox {
+    position: absolute; /* Absolut positioniert innerhalb des .status-item */
+    top: 0;
+    left: 0;
+    width: 100%;  /* Deckt das gesamte .status-item ab */
+    height: 100%; /* Deckt das gesamte .status-item ab */
+    opacity: 0; /* Standardmäßig unsichtbar */
+    cursor: default; /* Standardmäßig nicht klickbar */
+    z-index: 10; /* Stellen Sie sicher, dass sie über LED/Piktogramm liegen */
+
+    /* Um das Standard-Aussehen der Checkbox zu entfernen */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border: none;
+    background-color: transparent;
+}
+
+/* Wenn der manuelle Modus aktiv ist, werden die Checkboxen sichtbar und klickbar */
+body.manual-mode-active .manual-control-checkbox {
+    opacity: 0; /* Bleibt unsichtbar, wir nutzen es nur als Klick-Fläche */
+    cursor: pointer; /* Klickbar machen */
+}
+
+/* Optional: Visuelles Feedback, wenn Checkbox gechecked ist (z.B. ein leichter Rand, wenn die Opacity 0 ist) */
+body.manual-mode-active .manual-control-checkbox:checked {
+    /* border: 2px solid rgba(0, 255, 0, 0.5); */
+}
+
+/* Optional: Ändern des Cursors über den Status-Items im manuellen Modus, um Klickbarkeit anzuzeigen */
+body.manual-mode-active .status-item {
+    cursor: pointer;
+}
+
+/* Wenn der manuelle Modus aktiv ist, sollen die normalen Klick-Effekte (z.B. für die LED selbst) deaktiviert werden,
+   und die LEDs/Piktogramme nur über die Checkbox gesteuert werden */
+body.manual-mode-active .status-item .led,
+body.manual-mode-active .status-item img {
+    pointer-events: none; /* Macht LED/Piktogramm selbst nicht anklickbar */
+}
+
+/* Container für Slider-basierte Status-Items */
+.status-item-slider {
+    width: 100%; /* **WICHTIG: Nimmt volle Breite ein, um eine eigene Reihe zu bilden** */
+    display: flex;
+    flex-direction: column; /* LEDs oben, dann Slider */
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    background-color: #2a2a2a;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
+    margin-bottom: 10px; /* Abstand zu anderen Elementen */
+    /* min-width: 150px; */ /* Entfernt, da width: 100% dies überflüssig macht */
+}
+
+.status-item-slider label {
+    font-size: clamp(0.8em, 2vw, 1.9em);
+    color: #eee;
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+/* Container für die LEDs über dem Slider */
+.mode-leds {
+    width: 100%; /* **WICHTIG: LEDs nutzen die gesamte Breite** */
+    display: flex;
+    justify-content: space-around; /* **WICHTIG: Verteilt die LEDs gleichmäßig** */
+    align-items: center; /* Zentriert die LEDs vertikal im eigenen Container */
+    margin-bottom: 10px;
+}
+
+/* Stil für den Range Slider */
+#modeSlider {
+    width: 100%; /* Volle Breite des Containers */
+    height: 10px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #555;
+    outline: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 5px;
+}
+
+#modeSlider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #00bcd4; /* Cyan-Farbe für den Thumb */
+    cursor: grab;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    border: 2px solid #000;
+}
+
+#modeSlider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #00bcd4;
+    cursor: grab;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+    border: 2px solid #000;
+}
+
+
+/* Stil für die einzelnen Modus-Ziffern */
+.mode-digit {
+    font-family: 'Digital-7', monospace; /* Oder eine andere digitale Schriftart */
+    font-size: 1.5em; /* Größere Schrift für die Ziffern */
+    color: #222; /* **NEU: Dunkle Farbe für inaktive Ziffern (ehemaliger Hintergrund)** */
+    background-color: #555; /* **NEU: Hellerer Hintergrund (ehemalige Schriftfarbe)** */
+    padding: 5px 8px; /* Innenabstand */
+    border-radius: 5px; /* Leicht abgerundete Ecken */
+    border: 1px solid #777; /* **Angepasster Rand für besseren Kontrast** */
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.4); /* **Angepasster Schatten** */
+    min-width: 25px; /* Mindestbreite, um sie gleich groß zu halten */
+    text-align: center; /* Ziffer zentrieren */
+    flex-shrink: 0; /* Verhindert, dass die Elemente schrumpfen */
+    cursor: default; /* Zeigt an, dass es nicht direkt klickbar ist */
+    transition: all 0.2s ease-in-out; /* Weicher Übergang für Aktivierung */
+}
+
+/* Stil für die aktive Modus-Ziffer */
+.mode-digit.active {
+    color: #ffcc00; /* **NEU: Dunkle Schriftfarbe (ehemaliger Hintergrund des aktiven Zustands)** */
+    
+    box-shadow: 0 0 8px #ffdd44, inset 0 0 5px #ffcc00; /* **Angepasster Leuchteffekt und innerer Schatten** */
+    border-color: #ffdd44; /* **Angepasster leuchtender Rand** */
+}
+
+/* Container für die Modus-Auswahl, der volle Breite einnehmen soll */
+.mode-selection-group {
+    width: 100%; /* Nimmt die gesamte Breite des Eltern-Containers ein */
+    display: flex;
+    flex-direction: column;
+    background-color: #444; /* Konsistent mit anderen Einstellungs-Gruppen */
+    padding: 15px; /* Innenabstand */
+    border-radius: 8px; /* Abgerundete Ecken */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Dezenter Schatten */
+    margin-bottom: 20px; /* Abstand zum nächsten Element */
+    box-sizing: border-box; /* Stellt sicher, dass Padding und Border in der Breite enthalten sind */
+}
+
+/* Anpassung des mode-leds containers, um Ziffern besser zu verteilen */
+.mode-leds {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; /* Zentriert die Ziffern vertikal im eigenen Container */
+    margin-bottom: 10px;
+    gap: 5px; /* Abstand zwischen den Ziffern */
+}
+
+/* Container für die Modus-Bezeichnungen */
+.mode-labels-container {
+    width: 100%; /* Nimmt die gesamte Breite des Eltern-Containers ein */
+    display: flex; /* Stellt die Labels nebeneinander dar */
+    justify-content: space-between; /* Verteilt die Labels gleichmäßig über die Breite (wie die Ziffern) */
+    margin-top: 5px; /* Etwas Abstand zum Slider */
+    padding: 0 5px; /* **WICHTIG: Innenabstand, damit die äußeren Labels nicht am Rand kleben** */
+}
+
+/* Stil für die einzelnen Modus-Bezeichnungen */
+.mode-label {
+    color: #aaa; /* Helle graue Textfarbe */
+    font-size: 0.65em; /* **Angepasst: Noch kleinere Schriftgröße für ein kompakteres Aussehen** */
+    text-align: center; /* Text zentriert */
+    flex-grow: 1; /* Erlaubt den Labels, den verfügbaren Platz einzunehmen */
+    white-space: nowrap; /* Verhindert Zeilenumbruch */
+    overflow: hidden; /* Versteckt überlaufenden Text */
+    text-overflow: ellipsis; /* Fügt ... hinzu, wenn Text überläuft */
+    /* Optional: letter-spacing: -0.02em; Könnte den Text noch kompakter machen, falls gewünscht. */
+}
+/* Anpassung für das erste Modus-Label (ganz links) */
+.mode-labels-container .mode-label:first-child {
+    text-align: left; /* **Text linksbündig ausrichten** */
+}
+
+/* Anpassung für das letzte Modus-Label (ganz rechts) */
+.mode-labels-container .mode-label:last-child {
+    text-align: right; /* **Text rechtsbündig ausrichten** */
+}
+,
+/* --- NEU: Stil für den Slider-Freischalt-Bereich --- */
+.mode-control-container {
+    /* Stellen Sie sicher, dass dies ein Flex-Container ist, um Elemente sauber auszurichten */
+    display: flex;
+    flex-direction: column; /* Elemente untereinander anordnen */
+    align-items: center; /* Horizontale Zentrierung */
+    width: 100%;
+}
+
+.slider-unlock-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px; /* Abstand zwischen Checkbox und Label */
+    margin-bottom: 10px; /* Abstand zum Slider */
+    font-size: 0.9em;
+    color: #555; /* Etwas dunkler als die Slider-Labels */
+}
+
+/* Stil für den deaktivierten Slider */
+.slider:disabled {
+    opacity: 0.5; /* Macht den Slider halbtransparent */
+    cursor: not-allowed; /* Zeigt einen "Verboten"-Cursor */
+    /* Optional: Hintergrundfarbe ändern, um Inaktivität zu signalisieren */
+    background: #ccc; 
+}
+
+/* Stil für den Thumb des deaktivierten Sliders */
+.slider:disabled::-webkit-slider-thumb {
+    background: #999; /* Grauer Daumen für deaktivierten Slider */
+    cursor: not-allowed;
+}
+
+.slider:disabled::-moz-range-thumb {
+    background: #999; /* Grauer Daumen für deaktivierten Slider */
+    cursor: not-allowed;
+}
+
+.slider:disabled::-ms-thumb {
+    background: #999; /* Grauer Daumen für deaktivierten Slider */
+    cursor: not-allowed;
+}
+
+/* Optional: Verbessern Sie das Aussehen der Checkbox, falls gewünscht */
+.manual-control-checkbox {
+    /* Grundstil für Checkboxen, falls nicht schon global definiert */
+    transform: scale(1.2); /* Macht die Checkbox etwas größer */
+    cursor: pointer;
+}
+
+/* --- NEU: Stil für den Statusbereich des laufenden Programms (angepasst an .display-section) --- */
+
+.program-status-section {
+    /* HINTERGRUND geändert: Übernommen von .display-section */
+    background: linear-gradient(170deg, rgba(40, 40, 60, 1) 0%, rgba(0, 0, 0, 1) 50%, rgba(0, 0, 0, 1) 70%, rgba(40, 40, 60) 100%);
+    /* BOX-SHADOW geändert: Übernommen von .display-section */
+    box-shadow: inset 0px 1px 8px 2px;
+    /* BORDER entfernt: Um dem Original zu entsprechen */
+    
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.program-status-section h3 {
+    margin: 0;
+    color: #00bcd4;
+    font-size: 1.4em;
+}
+
+.program-status-section p {
+    margin: 0;
+    font-size: 1em;
+    color: #ccc;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.program-status-section .info-line {
+    display: block;
+}
+
+.program-status-section .info-line strong {
+    color: #eee;
+}
+
+/* Stil für den Stopp-Button (bleibt unverändert) */
+#btnStopProgram {
+    background-color: #c0392b; /* Kräftiges Rot */
+    border: none;
+    border-radius: 8px;
+    color: white;
+    padding: 10px 20px;
+    font-size: 1.1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    width: auto;
+    margin-top: 5px; /* Etwas mehr Abstand nach oben */
+}
+
+#btnStopProgram:hover {
+    background-color: #e74c3c;
+}
+
+/* Außenluft + Absolutwerte */
+.extern-section {
+    margin-top: 8px;
+    padding: 8px 15px;
+}
+
+.value-display-small {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding: 5px 10px;
+    border-radius: 5px;
+    min-width: 60px;
+}
+
+.value-display-small .label {
+    font-size: clamp(0.65em, 1.5vw, 1.1em);
+    color: #888;
+    margin-bottom: 3px;
+}
+
+.value-display-small .display-current-value {
+    font-size: clamp(1em, 4vw, 2em);
+    color: #aaddff;
+}
+
+.display-section:not(.extern-section) .value-display-small {
+    justify-content: center;
+}

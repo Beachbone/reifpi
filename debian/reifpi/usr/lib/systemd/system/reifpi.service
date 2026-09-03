@@ -1,0 +1,47 @@
+[Unit]
+Description=ReifungsPi — Steuerung für Reifeschränke (reifpi)
+After=network.target
+
+[Service]
+Type=simple
+User=reifpi
+Group=reifpi
+WorkingDirectory=/opt/reifpi
+
+Environment=REIFE_ENV=prod
+Environment=REIFPI_DB_PATH=/var/lib/reifpi/reifeschrank.db
+Environment=REIFPI_STATE_FILE=/run/reifpi/state.json
+Environment=REIFPI_LOG_FILE=/var/log/reifpi/reifpi.log
+# Pro Installation von postinst zufällig generiert, siehe debian/postinst.
+EnvironmentFile=-/etc/reifpi/secret_key.env
+
+# Ersetzt den alten manuellen tmpfs-Mount (/etc/fstab) + ExecStartPre-chown:
+# systemd legt /run/reifpi bei jedem Start automatisch mit dem richtigen
+# Owner an und räumt es beim Stop wieder auf. Das ist strukturell immun
+# gegen den historischen "Rechteproblem nach Neustart"-Bug, weil kein
+# separater Mount- oder Chown-Schritt mehr existiert, der fehlschlagen kann.
+RuntimeDirectory=reifpi
+RuntimeDirectoryMode=0750
+
+ExecStart=/opt/reifpi/venv/bin/gunicorn \
+    --workers 1 \
+    --worker-class gthread \
+    --threads 4 \
+    --bind 0.0.0.0:5000 \
+    --timeout 30 \
+    --access-logfile /var/log/reifpi/access.log \
+    --error-logfile  /var/log/reifpi/error.log \
+    "run:app"
+
+Restart=always
+RestartSec=5
+
+# Kleine Hardening-Maßnahmen, die mit dem dedizierten System-User ohnehin
+# schon möglich sind (kein Login-User mehr, dessen Rechte man nicht
+# einschränken will).
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/reifpi /var/log/reifpi
+
+[Install]
+WantedBy=multi-user.target

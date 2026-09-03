@@ -1,0 +1,48 @@
+#!/bin/sh
+# postrm — reifpi (ReifungsPi)
+#
+# "remove" lässt Daten (SQLite-DB, Logs, generierter Secret-Key) bewusst
+# stehen — erst "purge" räumt vollständig auf, inklusive System-User.
+
+set -e
+
+REIFPI_USER=reifpi
+REIFPI_HOME=/opt/reifpi
+DATA_DIR=/var/lib/reifpi
+LOG_DIR=/var/log/reifpi
+CONF_DIR=/etc/reifpi
+
+case "$1" in
+  purge)
+    rm -rf "$DATA_DIR" "$LOG_DIR" "$CONF_DIR" "$REIFPI_HOME"
+
+    if getent passwd "$REIFPI_USER" >/dev/null; then
+        deluser --system "$REIFPI_USER" >/dev/null || true
+    fi
+    if getent group "$REIFPI_USER" >/dev/null; then
+        delgroup --system "$REIFPI_USER" >/dev/null || true
+    fi
+    ;;
+
+  remove|upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+    ;;
+
+  *)
+    ;;
+esac
+
+# Automatically added by dh_installsystemd/13.14.1ubuntu5
+if [ "$1" = remove ] && [ -d /run/systemd/system ] ; then
+	systemctl --system daemon-reload >/dev/null || true
+fi
+# End automatically added section
+# Automatically added by dh_installsystemd/13.14.1ubuntu5
+if [ "$1" = "purge" ]; then
+	if [ -x "/usr/bin/deb-systemd-helper" ]; then
+		deb-systemd-helper purge 'reifpi.service' >/dev/null || true
+	fi
+fi
+# End automatically added section
+
+
+exit 0

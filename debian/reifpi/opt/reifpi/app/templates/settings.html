@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Einstellungen — Reifeschrank</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
+</head>
+<body>
+    <div id="message-container" class="message-container"></div>
+
+    <div class="control-panel">
+        <h1>Einstellungen Reifeschrank</h1>
+
+        <!-- Regelung -->
+        <div class="settings-panel">
+            <h3>Regelung</h3>
+            <div class="settings-grid">
+                <div class="settings-field">
+                    <label for="cfgTargetTemp">Soll-Temperatur (°C)</label>
+                    <input type="number" id="cfgTargetTemp" step="0.1" min="-50" max="60">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgTargetHum">Soll-Luftfeuchtigkeit (%)</label>
+                    <input type="number" id="cfgTargetHum" step="0.5" min="0" max="100">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgHystCool">Hysterese Kühlen (°C)</label>
+                    <input type="number" id="cfgHystCool" step="0.1" min="0.1" max="20">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgHystHeat">Hysterese Heizen (°C)</label>
+                    <input type="number" id="cfgHystHeat" step="0.1" min="0.1" max="20">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgHystMois">Hysterese Befeuchten (%)</label>
+                    <input type="number" id="cfgHystMois" step="0.1" min="0.1" max="50">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgHystFana">Hysterese Belüften (%)</label>
+                    <input type="number" id="cfgHystFana" step="0.1" min="0.1" max="50">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgRefreshrate">Regelzyklus (Sek.)</label>
+                    <input type="number" id="cfgRefreshrate" step="1" min="1" max="3600">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgArchHandling">Archiv-Limit (Einträge)</label>
+                    <input type="number" id="cfgArchHandling" step="100" min="100" max="100000">
+                </div>
+            </div>
+        </div>
+
+        <!-- Außensensor -->
+        <div class="settings-panel" id="panelExternSensor">
+            <h3>Außensensor</h3>
+            <div class="settings-grid">
+                <div class="settings-field">
+                    <label for="cfgAhtHumidify">Hysterese Befeuchten via Außenluft (%rF unter Soll)</label>
+                    <input type="number" id="cfgAhtHumidify" step="0.1" min="0.1" max="50">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgAhtProtect">Schutz-Hysterese (%rF über Soll)</label>
+                    <input type="number" id="cfgAhtProtect" step="0.1" min="0.1" max="50">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgAbsHumThreshold">Mindestdifferenz abs. Feuchte (g/m³)</label>
+                    <input type="number" id="cfgAbsHumThreshold" step="0.1" min="0" max="50">
+                </div>
+            </div>
+        </div>
+
+        <!-- GPIO-Pins -->
+        <div class="settings-panel">
+            <h3>GPIO-Pins (Relais)</h3>
+            <p class="settings-warning">Änderungen werden erst nach Service-Neustart aktiv.</p>
+            <div class="settings-grid">
+                <div class="settings-field" style="grid-column: 1 / -1;">
+                    <div class="toggle-field">
+                        <label id="lblRelayActiveHigh">Active-Low</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="cfgRelayActiveHigh">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="settings-grid">
+                <div class="settings-field">
+                    <label for="cfgGpioFanu">FANU — Umluft (GPIO)</label>
+                    <input type="number" id="cfgGpioFanu" step="1" min="1" max="40">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgGpioCool">COOL — Kühlung (GPIO)</label>
+                    <input type="number" id="cfgGpioCool" step="1" min="1" max="40">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgGpioFana">FANA — Frischluft (GPIO)</label>
+                    <input type="number" id="cfgGpioFana" step="1" min="1" max="40">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgGpioMois">MOIS — Befeuchter (GPIO)</label>
+                    <input type="number" id="cfgGpioMois" step="1" min="1" max="40">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgGpioHeat">HEAT — Heizung (GPIO)</label>
+                    <input type="number" id="cfgGpioHeat" step="1" min="1" max="40">
+                </div>
+            </div>
+        </div>
+
+        <!-- E-Mail -->
+        <div class="settings-panel">
+            <h3>E-Mail Benachrichtigung</h3>
+            <div class="settings-grid">
+                <div class="settings-field" style="grid-column: 1 / -1;">
+                    <div class="toggle-field">
+                        <label>E-Mail aktiviert</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="cfgMailEnabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-field">
+                    <label for="cfgMailSmtp">SMTP-Server</label>
+                    <input type="text" id="cfgMailSmtp" placeholder="smtp.example.com">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgMailPort">Port</label>
+                    <input type="number" id="cfgMailPort" step="1" min="1" max="65535">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgMailUser">Benutzername / Absender</label>
+                    <input type="text" id="cfgMailUser" placeholder="user@example.com">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgMailPassword">Passwort</label>
+                    <input type="password" id="cfgMailPassword" placeholder="(leer lassen = unverändert)">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgMailReceiver">Empfänger</label>
+                    <input type="text" id="cfgMailReceiver" placeholder="empfaenger@example.com">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgEmailSleep">Mindestabstand zwischen E-Mails (Min.)</label>
+                    <input type="number" id="cfgEmailSleep" step="1" min="1" max="1440">
+                </div>
+            </div>
+            <button class="test-btn" id="btnTestEmail">Test-E-Mail senden</button>
+        </div>
+
+        <!-- ntfy -->
+        <div class="settings-panel">
+            <h3>ntfy Push-Benachrichtigung</h3>
+            <div class="settings-grid">
+                <div class="settings-field" style="grid-column: 1 / -1;">
+                    <div class="toggle-field">
+                        <label>ntfy aktiviert</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="cfgNtfyEnabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-field">
+                    <label for="cfgNtfyServer">ntfy-Server</label>
+                    <input type="text" id="cfgNtfyServer" placeholder="https://ntfy.sh">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgNtfyTopic">Topic</label>
+                    <input type="text" id="cfgNtfyTopic" placeholder="mein-reifeschrank">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgNtfyUser">Benutzername (für Basic-Auth, sonst leer)</label>
+                    <input type="text" id="cfgNtfyUser" placeholder="benutzername">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgNtfyToken">Passwort / Bearer-Token</label>
+                    <input type="password" id="cfgNtfyToken" placeholder="(leer lassen = unverändert)">
+                </div>
+            </div>
+            <button class="test-btn" id="btnTestNtfy">Setup speichern &amp; Testnachricht senden</button>
+        </div>
+
+        <!-- Datenbankinfo -->
+        <div class="settings-panel">
+            <h3>Datenbank / Archiv</h3>
+            <div class="db-info-section">
+                <div class="db-info-item">
+                    <span class="db-info-label">Einträge gesamt:</span>
+                    <span class="db-info-value" id="dbTotal">—</span>
+                </div>
+                <div class="db-info-item">
+                    <span class="db-info-label">Einträge (letzte 24 h):</span>
+                    <span class="db-info-value" id="dbLast24h">—</span>
+                </div>
+                <div class="db-info-item">
+                    <span class="db-info-label">Ältester Eintrag:</span>
+                    <span class="db-info-value" id="dbOldest">—</span>
+                </div>
+                <div class="db-info-item">
+                    <span class="db-info-label">Neuester Eintrag:</span>
+                    <span class="db-info-value" id="dbNewest">—</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hardware Setup -->
+        <div class="settings-panel">
+            <h3>Hardware Setup</h3>
+            <p class="settings-warning">Sensor-Typ und I2C-Adressen. Einmalige Konfiguration — erfordert Service-Neustart.</p>
+            <button class="test-btn" id="btnHardwareSetup">Hardware Setup öffnen …</button>
+        </div>
+
+        <div class="control-buttons">
+            <button id="btnSaveSettings">Einstellungen speichern</button>
+            <button onclick="window.location.href='{{ url_for('web.index') }}'">← Zurück</button>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+</body>
+</html>
