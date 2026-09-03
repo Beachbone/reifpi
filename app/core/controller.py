@@ -33,7 +33,7 @@ MODE_TEMP_ONLY     = 2   # Nur Temperaturregelung
 MODE_MANUAL        = 3   # Manuell — kein automatisches Schalten
 
 
-class ReifeschrankController:
+class ReifpiController:
     """
     Hauptregelkreis der Steuerung.
 
@@ -74,7 +74,7 @@ class ReifeschrankController:
         self._running = True
         self._thread  = threading.Thread(
             target=self._run_loop,
-            name="reifeschrank-controller",
+            name="reifpi-controller",
             daemon=True,
         )
         self._thread.start()

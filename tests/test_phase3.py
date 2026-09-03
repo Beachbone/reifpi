@@ -17,7 +17,7 @@ from app.db.archive_writer import ArchiveWriter
 from app.core.state import SystemState, StateManager
 from app.core.gpio_manager import GpioManager
 from app.core.sensors import SensorManager, SimulatedSensor, NoneSensor
-from app.core.controller import ReifeschrankController, MODE_AUTO, MODE_MANUAL
+from app.core.controller import ReifpiController, MODE_AUTO, MODE_MANUAL
 from app.core.program_runner import ProgramRunner
 from app.config import DevConfig
 from tests.test_phase1 import get_default_config
@@ -47,7 +47,7 @@ def make_controller(db, state=None, intern_sensor=None, extern_sensor=None):
         extern_sensor=extern_sensor or SimulatedSensor(18.0, 65.0),
     )
     runner  = ProgramRunner(db)
-    ctrl    = ReifeschrankController(
+    ctrl    = ReifpiController(
         state=state,
         state_manager=sm,
         sensor_manager=sensors,

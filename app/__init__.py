@@ -20,7 +20,7 @@ from app.core.state       import StateManager
 from app.core.gpio_manager import GpioManager
 from app.core.sensors     import build_sensor_manager
 from app.core.program_runner import ProgramRunner
-from app.core.controller  import ReifeschrankController
+from app.core.controller  import ReifpiController
 
 
 def create_app(env: str | None = None) -> Flask:
@@ -140,7 +140,7 @@ def create_app(env: str | None = None) -> Flask:
     app.program_runner = program_runner  # type: ignore[attr-defined]
 
     # ── Controller ────────────────────────────────────────────────────────────
-    controller = ReifeschrankController(
+    controller = ReifpiController(
         state          = state,
         state_manager  = state_manager,
         sensor_manager = sensor_manager,
@@ -185,7 +185,7 @@ def create_app(env: str | None = None) -> Flask:
 
 
 def _shutdown(
-    controller:    "ReifeschrankController",
+    controller:    "ReifpiController",
     gpio_manager:  "GpioManager",
     archive_writer: "ArchiveWriter",
     db:            "Database",

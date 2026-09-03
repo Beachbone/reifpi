@@ -7,7 +7,7 @@ Migriert:
   3. riping_steps    (Reifeschritte)
 
 Aufruf auf dem Pi:
-    cd /opt/reife-pi2
+    cd /opt/reifpi
     venv/bin/python migrate_from_mariadb.py
 
 Voraussetzung: Die SQLite-DB muss bereits initialisiert sein (einmal run.py
@@ -36,7 +36,8 @@ MARIADB = {
     "charset":  "utf8mb4",
 }
 
-SQLITE_PATH = "/opt/reife-pi2/reifeschrank.db"
+# Entspricht dem REIFPI_DB_PATH-Default aus debian/reifpi.service (FHS-Pfad).
+SQLITE_PATH = "/var/lib/reifpi/reifeschrank.db"
 
 BATCH_SIZE = 500   # Anzahl Zeilen pro INSERT-Batch
 

@@ -2,7 +2,7 @@
 # deploy.sh — Baut das reifpi-.deb lokal und installiert es zum Testen
 # auf einem Ziel-Pi (SSH-Zugang vorausgesetzt).
 #
-# Ersetzt den alten rsync-Direktdeploy (reife-pi2.service, setup_tmpfs.sh) —
+# Ersetzt den alten rsync-Direktdeploy (frühere reife-pi2.service, setup_tmpfs.sh) —
 # der Installationsweg ist jetzt ausschließlich das .deb-Paket, dessen
 # postinst/systemd-Unit (User-Anlage, RuntimeDirectory, venv) alles selbst
 # erledigt, was hier früher Schritt für Schritt manuell gemacht wurde.
