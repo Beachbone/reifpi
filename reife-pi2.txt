@@ -1,0 +1,421 @@
+# Reifeschrank-Steuerung - Projekt-Dokumentation
+
+## Projekt-Übersicht
+
+Entwicklung einer Open-Source Steuerung für selbstgebaute Käse-Reifeschränke auf Basis von Raspberry Pi. Ziel: Einfache, günstige DIY-Lösung die von Laien nachgebaut werden kann.
+
+## Hardware-Komponenten
+
+### Sensoren
+- 2x I2C Temperatursensoren (SHT31 bevorzugt, alternativ AHT21 oder BMP280)
+  - 1x intern im Reiferaum (I2C Adresse 0x44)
+  - 1x extern (I2C Adresse 0x45)
+- Messung: Temperatur + Luftfeuchtigkeit
+
+### Aktoren (alle 230V~)
+- Kühlschrankkompressor (~200W) - vorhandener Kühlschrank mit Thermostat auf max
+- Heizpad (50W)
+- Luftbefeuchter/Vernebler
+- Lüfter Zu/Abluft (Frischluft)
+- Lüfter Umluft intern
+- Alle geschaltet über 5x Relais
+
+### Steuereinheit
+- Raspberry Pi (alle Modelle)
+- 5-Kanal Relais-Board für 230V
+- Optional: 3.5" oder 7" Touchscreen (später)
+
+## Software-Architektur
+
+### Technologie-Stack
+- **Backend:** Python 3
+- **Webserver:** Flask
+- **Datenbank:** SQLite
+- **GPIO:** gpiozero (nicht RPi.GPIO - zukunftssicher, Pi 5 kompatibel)
+- **Frontend:** Responsive HTML/CSS/JavaScript (später PWA)
+
+### Module
+
+**sensors.py**
+- Klasse SensorManager
+- Unterstützt SHT31 am I2C
+- Dummy-Modus für Tests ohne Hardware
+- Fallback bei Sensor-Ausfall auf letzte Werte
+
+**database.py**
+- SQLite-Datenbank mit 4 Tabellen:
+  - measurements: Sensordaten für Graphen (Zeitreihen)
+  - system_state: Persistenter Zustand (Modus, Sollwerte, aktives Programm)
+  - relay_states: Relais-Zustände mit Grund
+  - events: Event-Log
+- Context-Manager für sichere DB-Operationen
+- Automatische Initialisierung bei erstem Start
+
+**controller.py**
+- Klasse ReifeschrankController
+- Regelschleife mit 5 Sekunden Takt
+- Drei Betriebsmodi:
+  - manual: Keine automatische Regelung
+  - temp_only: Nur Temperaturregelung
+  - auto: Volle Regelung (Temperatur + Feuchtigkeit)
+- Zustandsverwaltung im RAM (SystemState)
+- Periodisches DB-Speichern alle 60s
+- Sofortiges Speichern bei Relais-Änderungen
+
+**app.py**
+- Flask Webserver
+- REST API Endpunkte:
+  - GET /api/status - Aktueller Status
+  - POST /api/relay/<name>/<on|off> - Relais manuell schalten
+  - POST /api/mode - Betriebsmodus setzen
+  - POST /api/targets - Sollwerte setzen
+  - GET /api/history - Messwerte-Historie
+  - GET /api/events - Event-Log
+- HTML-Frontend über templates/index.html
+
+**utils.py** (implementiert)
+- calculate_absolute_humidity(temp, humidity) - Magnus-Formel
+- should_ventilate() - Intelligente Frischluft-Entscheidung
+- Berechnet absolute Feuchtigkeit in g/m³ für physikalisch korrekte Lüftungs-Steuerung
+
+**templates/index.html**
+- Responsive Web-Interface
+- Live-Updates alle 3 Sekunden
+- Zeigt: Sensoren, Sollwerte, Modi, Relais-Steuerung
+- Absolute Feuchtigkeit wird dezent angezeigt (Info-Zweck)
+
+## Regelungs-Konzepte
+
+### Temperatur-Regelung
+**Methode:** Hysterese-Regelung (NICHT PID!)
+- Sollwert: z.B. 12.0°C
+- Hysterese: ±0.5°C
+- Temp > 12.5°C → Kompressor EIN, Heizung AUS
+- Temp < 11.5°C → Kompressor AUS, Heizung EIN
+- Zwischen 11.5-12.5°C → Keine Aktion
+- **Wichtig:** Kompressor-Schutzzeit 5 Minuten zwischen Starts
+
+**Warum keine PID?**
+- System zu träge (5-15 Min Reaktionszeit)
+- Nur binäre Aktoren (On/Off, keine Stufenregelung)
+- Kompressor-Schutzzeit verhindert schnelle Eingriffe
+- ±0.5°C Genauigkeit völlig ausreichend für Käsereifung
+- Hysterese ist einfach, robust, wartungsfrei
+
+### Feuchtigkeits-Regelung mit Magnus-Formel
+**Problem:** Relative Luftfeuchtigkeit allein ist irreführend!
+- Warme Luft kann mehr Wasser aufnehmen als kalte
+- 65% bei 20°C enthält MEHR Wasser als 85% bei 12°C
+
+**Lösung:** Absolute Feuchtigkeit berechnen
+```
+Magnus-Formel:
+1. Sättigungsdampfdruck: E_s = 6.112 × exp((17.62 × T) / (243.12 + T))
+2. Tatsächlicher Dampfdruck: E = (RH / 100) × E_s  
+3. Absolute Feuchtigkeit: AH = (E × 216.7) / (T + 273.15)
+Ergebnis in g/m³
+```
+
+**Regellogik:**
+- Zu trocken + Außenluft absolut feuchter → Frischluft nutzen
+- Zu trocken + Außenluft absolut trockener → Befeuchter nutzen
+- Zu feucht + Außenluft absolut trockener → Frischluft zum Entfeuchten
+- Zu feucht + Außenluft absolut feuchter → Nur warten (nicht lüften!)
+- Sicherheits-Margin: 0.5 g/m³ gegen ständiges Schalten
+
+### Zustandspersistenz
+**Problem:** Nach Stromausfall/Neustart muss System weiterlaufen
+
+**Lösung:**
+- Zustand permanent in DB (system_state, relay_states)
+- Im RAM gecacht für schnellen Zugriff
+- DB-Schreibzugriffe minimiert (SD-Karten-Schonung):
+  - Relais-Änderung → Sofort in DB
+  - Messwerte → Alle 60-120s gebündelt
+  - System-State → Alle 60s + bei Änderungen
+
+**Restart-Logik:**
+- Lade letzten Zustand aus DB
+- Prüfe Kompressor-Schutzzeit
+- Bei kurzem Ausfall (<10 Min): Nahtlos fortsetzen
+- Bei langem Ausfall (>2h): Programm abbrechen, Safe-Mode
+
+**Safe-Mode bei Fehler:**
+- Kompressor AUS
+- Heizung AUS
+- Befeuchter AUS
+- Frischluft AUS
+- Umluft EIN (verhindert Schimmel)
+
+## Offene Features (noch NICHT implementiert)
+
+### 1. Periodischer Luftaustausch (diskutiert, nicht implementiert)
+Drei Varianten zur Auswahl:
+- **Variante 1 (Einfach):** Timer - alle X Stunden für Y Minuten lüften
+- **Variante 2 (Intelligent):** Nur bei ausgeschaltetem Kompressor und stabiler Temperatur
+- **Variante 3 (Flexibel):** Konfigurierbar über Web-Interface
+
+**Zweck:** Keime/Schimmelsporen rausblasen, CO2 abführen, Frischluft zuführen
+
+**Empfohlene Werte:**
+- Intervall: 4-6 Stunden
+- Dauer: 3-5 Minuten
+- Priorität: Höher als Feuchtigkeitsregelung während aktiv
+
+### 2. Zeitgesteuerte Reifeprogramme
+- Automatische Sollwert-Anpassung über Wochen
+- Beispiel: Weichkäse 3 Wochen (14°C/95% → 12°C/90% → 10°C/85%)
+- Speicherung in DB
+- Auswahl über Web-Interface
+
+### 3. Benachrichtigungen
+- E-Mail bei Alarmen
+- ntfy-App Integration für Push-Notifications
+- Events: Programm-Start/Ende, Fehler, Sollwert erreicht
+
+### 4. Graphen/Visualisierung
+- Chart.js für Temperatur/Feuchtigkeits-Verläufe
+- Historische Daten über Tage/Wochen
+- Export als CSV
+
+### 5. PWA-Features
+- Offline-Fähigkeit
+- Installierbar auf Smartphone
+- Service Worker
+- App-Manifest
+
+### 6. GPIO-Integration (Code vorbereitet)
+Nutze gpiozero (nicht RPi.GPIO):
+```python
+from gpiozero import OutputDevice
+
+relays = {
+    'kompressor': OutputDevice(17, active_high=False),
+    'heizung': OutputDevice(27, active_high=False),
+    # ... weitere
+}
+```
+
+Pin-Belegung noch festzulegen.
+
+## Datenbank-Schema
+```sql
+-- Messwerte (Zeitreihen)
+CREATE TABLE measurements (
+    id INTEGER PRIMARY KEY,
+    timestamp REAL,
+    temp_intern REAL,
+    humidity_intern REAL,
+    temp_extern REAL,
+    humidity_extern REAL
+);
+
+-- System-Zustand (Singleton, id=1)
+CREATE TABLE system_state (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    active_program_id INTEGER,
+    program_started_at REAL,
+    program_day INTEGER,
+    mode TEXT,
+    target_temp REAL,
+    target_humidity REAL,
+    updated_at REAL
+);
+
+-- Relais-Zustände
+CREATE TABLE relay_states (
+    relay_name TEXT PRIMARY KEY,
+    state INTEGER,
+    last_changed REAL,
+    reason TEXT
+);
+
+-- Events/Logs
+CREATE TABLE events (
+    id INTEGER PRIMARY KEY,
+    timestamp REAL,
+    event_type TEXT,
+    message TEXT,
+    data TEXT
+);
+```
+
+## Installation & Start
+```bash
+# Dependencies
+pip install Flask gpiozero
+
+# Optional für Hardware (auf Pi):
+sudo apt-get install python3-gpiozero
+
+# Starten
+python3 app.py
+
+# Webinterface
+http://localhost:5000
+```
+
+## Projektstruktur
+```
+reifeschrank/
+├── sensors.py          # Sensor-Auslesen
+├── database.py         # SQLite-Verwaltung  
+├── controller.py       # Regelschleife
+├── utils.py           # Magnus-Formel, Hilfsfunktionen
+├── app.py             # Flask Webserver
+├── requirements.txt   # Python-Dependencies
+├── templates/
+│   └── index.html     # Web-Frontend
+└── README.md          # Dokumentation
+```
+
+## Wichtige Design-Entscheidungen
+
+### Warum Python?
+- Große RasPi-Community
+- Viele Sensor-Libraries verfügbar
+- Einfach für Laien zu verstehen/anpassen
+- Gut dokumentiert
+
+### Warum Flask statt FastAPI?
+- Einfacher für Anfänger
+- Mehr RasPi-Tutorials verfügbar
+- Async nicht nötig (langsames System)
+- Bewährt und stabil
+
+### Warum SQLite?
+- Keine Administration nötig
+- Portabel (eine Datei)
+- Ausreichend für Zeitreihen
+- ACID-konform
+
+### Warum gpiozero statt RPi.GPIO?
+- Offiziell empfohlen von Raspberry Pi Foundation
+- Funktioniert auf allen Pi-Modellen inkl. Pi 5
+- Einfacherer Code
+- Automatisches Cleanup
+- Mock-Support für Tests
+
+### Warum Hysterese statt PID?
+- System zu träge (Minutenbereich)
+- Nur On/Off-Aktoren
+- Ausreichende Genauigkeit
+- Einfach wartbar
+- Bewährt in Praxis
+
+## Sicherheits-Aspekte
+
+### Elektrisch
+- 230V~ Relais-Schaltung durch Fachmann prüfen lassen
+- Kompressor-Schutzzeit MUSS eingehalten werden (Schäden!)
+- Keine Überlastung der Relais
+
+### Software
+- Nur lokales Netzwerk (kein Internet-Zugang)
+- Keine Authentifizierung (läuft in privatem Netzwerk)
+- Safe-Mode bei Fehlern
+- Watchdog für Controller (noch zu implementieren)
+
+### Lebensmittel
+- Bei Sensor-Ausfall: Alarm + Safe-Mode
+- Regelmäßige manuelle Kontrolle empfohlen
+- System ersetzt keine Aufmerksamkeit
+
+## Typische Sollwerte für Käsereifung
+```
+Weichkäse:     12-14°C, 90-95% Feuchtigkeit
+Hartkäse:      10-13°C, 85-90% Feuchtigkeit  
+Blauschimmel:  8-12°C,  90-95% Feuchtigkeit
+```
+
+## Test-Status
+
+✅ Sensoren (Dummy-Modus)
+✅ Datenbank
+✅ Controller mit Regelung
+✅ Flask Webserver
+✅ REST API
+✅ Frontend mit Live-Updates
+✅ Magnus-Formel für absolute Feuchtigkeit
+✅ Zustandspersistenz
+
+⏳ GPIO-Hardware (Code vorbereitet)
+⏳ Reifeprogramme
+⏳ Benachrichtigungen
+⏳ Graphen
+⏳ PWA
+⏳ Periodischer Luftaustausch
+
+## Nächste Schritte
+
+1. GPIO Pin-Belegung definieren
+2. Hardware-Test mit echtem Pi + Sensoren
+3. Relais-Board anschließen und testen
+4. Einer der Luftaustausch-Varianten implementieren
+5. Reifeprogramme konzipieren und implementieren
+6. Graphen mit Chart.js einbauen
+7. Benachrichtigungen (E-Mail + ntfy)
+8. Systemd Service für Auto-Start
+9. Gehäuse/Montage planen
+10. Dokumentation für Nachbau
+
+## Kontakt & Lizenz
+
+- Open Source, frei verwendbar für DIY
+- Entwickelt für die Maker-Community
+- Fehler/Verbesserungen willkommen
+
+---
+
+**Status:** Proof-of-Concept erfolgreich, bereit für Hardware-Integration
+```
+
+---
+
+## Zusatz: Konkrete Aufgabe für Claude Code
+
+Wenn du mit dem Projekt neu startest, gib Claude Code diese konkrete Aufgabe:
+```
+AUFGABE: Bereite das Reifeschrank-Projekt für Hardware-Integration vor
+
+KONTEXT: 
+Siehe obige Projekt-Dokumentation. Das System läuft aktuell im Dummy-Modus.
+
+ZU TUN:
+
+1. PRÜFE vorhandenen Code:
+   - Sind alle Module vorhanden? (sensors.py, database.py, controller.py, utils.py, app.py)
+   - Läuft das System im Dummy-Modus?
+   - Teste: python3 app.py
+
+2. GPIO-INTEGRATION vorbereiten:
+   - Ergänze controller.py um GPIO-Init mit gpiozero
+   - Definiere Pin-Belegung (als Kommentar/Config):
+     * GPIO 17: Kompressor
+     * GPIO 27: Heizung
+     * GPIO 22: Befeuchter
+     * GPIO 23: Lüfter Umluft
+     * GPIO 24: Lüfter Frischluft
+   - Behalte use_dummy_relays Flag für Tests
+
+3. KONFIGURATION externalisieren:
+   - Erstelle config.py mit:
+     * Pin-Belegung
+     * Standardwerte (Solltemperatur, Hysterese, etc.)
+     * DB-Pfad
+     * Intervalle
+   - Importiere in anderen Modulen
+
+4. SYSTEMD SERVICE erstellen:
+   - Datei: reifeschrank.service
+   - Auto-Start nach Boot
+   - Restart bei Crash
+   - Logging
+
+5. DOCUMENTATION aktualisieren:
+   - README.md mit Hardware-Anleitung
+   - Schaltplan als ASCII-Art oder Beschreibung
+   - Pin-Belegung dokumentieren
+
+TESTE nach jeder Änderung im Dummy-Modus!
+Kein Code löschen - nur ergänzen und strukturieren.

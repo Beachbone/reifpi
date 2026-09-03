@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reifeschrank Steuerung</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div id="message-container" class="message-container"></div>
+
+    <div class="control-panel">
+        <h1>Reifeschrank Steuerung</h1>
+
+        <!-- Istwert-Anzeige (7-Segment) -->
+        <div class="display-section">
+            <div class="value-display">
+                <span class="label">Temperatur</span>
+                <span id="setTempDisplay" class="display-set-value seven-segment">--.-°C</span>
+                <span id="currentTempDisplay" class="display-current-value seven-segment">--.-°C</span>
+            </div>
+            <div class="value-display-small">
+                <span class="label">Abs. LF Innen</span>
+                <span id="absHumInternDisplay" class="display-current-value seven-segment">-.-- g/m³</span>
+            </div>
+            <div class="value-display">
+                <span class="label">Luftfeuchtigkeit</span>
+                <span id="setHumidityDisplay" class="display-set-value seven-segment">---%</span>
+                <span id="currentHumidityDisplay" class="display-current-value seven-segment">---%</span>
+            </div>
+        </div>
+
+        <!-- Außenluft + Absolutwerte -->
+        <div class="display-section extern-section">
+            <div class="value-display-small">
+                <span class="label">Außen Temp</span>
+                <span id="externTempDisplay" class="display-current-value seven-segment">--.-°C</span>
+            </div>
+            <div class="value-display-small">
+                <span class="label">Außen Feuchte</span>
+                <span id="externHumDisplay" class="display-current-value seven-segment">---%</span>
+            </div>
+            <div class="value-display-small">
+                <span class="label">Abs. LF Außen</span>
+                <span id="absHumExternDisplay" class="display-current-value seven-segment">-.-- g/m³</span>
+            </div>
+        </div>
+
+        <!-- Sollwerte + Hysterese -->
+        <div class="settings-section">
+            <div class="setting-group">
+                <div class="setting-item">
+                    <label for="setTemp">Soll-Temp (°C):</label>
+                    <div class="input-with-controls">
+                        <button class="control-button minus" id="btnTempMinus">-</button>
+                        <input type="number" id="setTemp" value="14.0" min="-10.0" max="50.0" step="0.1">
+                        <button class="control-button plus" id="btnTempPlus">+</button>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label for="setHumidity">Soll-Feucht (%):</label>
+                    <div class="input-with-controls">
+                        <button class="control-button minus" id="btnHumidityMinus">-</button>
+                        <input type="number" id="setHumidity" value="80" min="0" max="100" step="1">
+                        <button class="control-button plus" id="btnHumidityPlus">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="setting-group-hysteresis">
+                <div class="setting-item">
+                    <label for="temp_hyst_cool">Hyst Kühlen (°C):</label>
+                    <div class="input-with-controls">
+                        <button class="control-button minus" id="btnTempHystCoolMinus">-</button>
+                        <input type="number" id="temp_hyst_cool" value="0.5" min="0.1" max="10.0" step="0.1">
+                        <button class="control-button plus" id="btnTempHystCoolPlus">+</button>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label for="hum_hyst_mois">Hyst Befeuchten (%):</label>
+                    <div class="input-with-controls">
+                        <button class="control-button minus" id="btnHumHystMoisMinus">-</button>
+                        <input type="number" id="hum_hyst_mois" value="5.0" min="0.1" max="20.0" step="0.1">
+                        <button class="control-button plus" id="btnHumHystMoisPlus">+</button>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label for="temp_hyst_heat">Hyst Heizen (°C):</label>
+                    <div class="input-with-controls">
+                        <button class="control-button minus" id="btnTempHystHeatMinus">-</button>
+                        <input type="number" id="temp_hyst_heat" value="1.0" min="0.1" max="10.0" step="0.1">
+                        <button class="control-button plus" id="btnTempHystHeatPlus">+</button>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label for="hum_hyst_fana">Hyst Belüften (%):</label>
+                    <div class="input-with-controls">
+                        <button class="control-button minus" id="btnHumHystFanAMinus">-</button>
+                        <input type="number" id="hum_hyst_fana" value="2.0" min="0.1" max="20.0" step="0.1">
+                        <button class="control-button plus" id="btnHumHystFanAPlus">+</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Relais-Status LEDs -->
+        <div class="status-leds">
+            <div class="leds-and-pictograms-grid">
+                <div class="status-item" data-relay="heat">
+                    <div class="led" id="ledHeating"></div>
+                    <img src="{{ url_for('static', filename='icons/sunny.png') }}" alt="Heizung" id="picHeating" class="pictogram-inactive">
+                    <input type="checkbox" class="manual-control-checkbox" id="checkHeating">
+                </div>
+                <div class="status-item" data-relay="cool">
+                    <div class="led" id="ledCooling"></div>
+                    <img src="{{ url_for('static', filename='icons/cool.png') }}" alt="Kühlung" id="picCooling" class="pictogram-inactive">
+                    <input type="checkbox" class="manual-control-checkbox" id="checkCooling">
+                </div>
+                <div class="status-item" data-relay="fanu">
+                    <div class="led" id="ledFanU"></div>
+                    <img src="{{ url_for('static', filename='icons/tornado.png') }}" alt="Umluft" id="picFanU" class="pictogram-inactive">
+                    <input type="checkbox" class="manual-control-checkbox" id="checkFanU">
+                </div>
+                <div class="status-item" data-relay="fana">
+                    <div class="led" id="ledFanA"></div>
+                    <img src="{{ url_for('static', filename='icons/cloudy.png') }}" alt="Frischluft" id="picFanA" class="pictogram-inactive">
+                    <input type="checkbox" class="manual-control-checkbox" id="checkFanA">
+                </div>
+                <div class="status-item" data-relay="mois">
+                    <div class="led" id="ledMois"></div>
+                    <img src="{{ url_for('static', filename='icons/rain.png') }}" alt="Befeuchter" id="picMois" class="pictogram-inactive">
+                    <input type="checkbox" class="manual-control-checkbox" id="checkMois">
+                </div>
+            </div>
+        </div>
+
+        <!-- Aktives Reifeprogramm -->
+        <div id="program-status-section" class="program-status-section" style="display:none;">
+            <h3>Aktives Reifeprogramm</h3>
+            <p>
+                <span class="info-line"><strong>Programm:</strong> <span id="runningProgramName"></span></span>
+                <span class="info-line"><strong>Schritt:</strong> <span id="runningProgramStep"></span></span>
+                <span class="info-line"><strong>Endet:</strong> <span id="runningProgramEnd"></span></span>
+            </p>
+            <button id="btnStopProgram">Programm Stoppen</button>
+        </div>
+
+        <!-- Safe-Mode Anzeige -->
+        <div id="safe-mode-banner" class="program-status-section" style="display:none; border: 2px solid #f44336;">
+            <h3 style="color:#f44336;">⚠ Safe-Mode aktiv</h3>
+            <p><span id="safeModeReason" class="info-line"></span></p>
+            <button id="btnResetSafeMode" style="background-color:#f44336;">Safe-Mode zurücksetzen</button>
+        </div>
+
+        <!-- Modus-Auswahl + Navigation -->
+        <div class="control-buttons">
+            <div class="status-item-slider">
+                <div class="mode-selection-group">
+                    <label>Betriebsmodus: <span id="modeStatusText">(gesperrt)</span></label>
+                    <div class="mode-leds">
+                        <span class="mode-digit" id="modeDigit0">0</span>
+                        <span class="mode-digit" id="modeDigit1">1</span>
+                        <span class="mode-digit" id="modeDigit2">2</span>
+                        <span class="mode-digit" id="modeDigit3">3</span>
+                    </div>
+                    <input type="range" min="0" max="3" value="0" step="1" id="modeSlider" disabled>
+                    <div class="mode-labels-container">
+                        <span class="mode-label">0 Regelg. aus</span>
+                        <span class="mode-label">1 Vollregelung</span>
+                        <span class="mode-label">2 nur Temp</span>
+                        <span class="mode-label">3 Manuell</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="status-buttons-group">
+                <div class="status-item" data-control-id="unlockMode">
+                    <div class="led" id="ledUnlock"></div>
+                    <img src="{{ url_for('static', filename='icons/lock.png') }}" alt="Modus freischalten" id="picUnlock" class="pictogram-inactive">
+                    <input type="checkbox" class="manual-control-checkbox" id="checkUnlock">
+                </div>
+                <div class="status-item" data-control-id="programs" id="navPrograms">
+                    <div class="led" id="ledPrograms"></div>
+                    <img src="{{ url_for('static', filename='icons/program.png') }}" alt="Programme" id="picPrograms" class="pictogram-inactive">
+                    <input type="checkbox" class="manual-control-checkbox" id="checkPrograms">
+                </div>
+                <div class="status-item" data-control-id="archive" id="navArchive">
+                    <div class="led" id="ledArchive"></div>
+                    <img src="{{ url_for('static', filename='icons/archive.png') }}" alt="Archiv" id="picArchive" class="pictogram-inactive">
+                    <input type="checkbox" class="manual-control-checkbox" id="checkArchive">
+                </div>
+                <div class="status-item" data-control-id="settings" id="navSettings">
+                    <div class="led" id="ledSettings"></div>
+                    <img src="{{ url_for('static', filename='icons/setup.png') }}" alt="Einstellungen" id="picSettings" class="pictogram-inactive">
+                    <input type="checkbox" class="manual-control-checkbox" id="checkSettings">
+                </div>
+                <div class="status-item" data-control-id="power">
+                    <div class="led" id="ledPower"></div>
+                    <img src="{{ url_for('static', filename='icons/power.png') }}" alt="Herunterfahren" id="picPower" class="pictogram-inactive">
+                    <input type="checkbox" class="manual-control-checkbox" id="checkPower">
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /.control-panel -->
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>

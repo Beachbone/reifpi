@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reifungsprogramme</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/programs.css') }}">
+</head>
+<body>
+    <div id="message-container" class="message-container"></div>
+
+    <div class="control-panel">
+        <h1>Reifungsprogramme</h1>
+
+        <div class="sort-options">
+            <label for="sortSelect">Sortieren nach:</label>
+            <select id="sortSelect">
+                <option value="name_asc">Name (A–Z)</option>
+                <option value="name_desc">Name (Z–A)</option>
+                <option value="created_asc">Erstellungsdatum (Älteste zuerst)</option>
+                <option value="created_desc" selected>Erstellungsdatum (Neueste zuerst)</option>
+            </select>
+        </div>
+
+        <div class="program-list-container" id="programListContainer">
+            <p id="loadingMessage">Lade Reifungsprogramme…</p>
+        </div>
+
+        <div class="control-buttons">
+            <button id="btnAddProgram">Neues Programm</button>
+            <button id="btnImportProgram">Von URL importieren</button>
+            <button id="btnBack" onclick="window.location.href='{{ url_for('web.index') }}'">← Zurück</button>
+        </div>
+    </div>
+
+    <!-- Modal: Programm bearbeiten / anlegen -->
+    <div id="editProgramModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2 id="modalTitle">Programm bearbeiten</h2>
+            <form id="editProgramForm">
+                <input type="hidden" id="editProgramId">
+                <div class="form-group">
+                    <label for="editProgramName">Name des Programms:</label>
+                    <input type="text" id="editProgramName" required placeholder="z. B. Kulen 6 Wochen">
+                </div>
+                <div class="form-group">
+                    <label for="editProgramDescription">Beschreibung:</label>
+                    <textarea id="editProgramDescription" rows="4" placeholder="Kurze Beschreibung des Reifeprogramms…"></textarea>
+                </div>
+                <div class="form-group program-steps-edit-container">
+                    <label>Reifungsschritte:</label>
+                    <div id="editStepsList"></div>
+                    <button type="button" id="btnAddStep" class="add-step-btn">+ Schritt hinzufügen</button>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="action-btn save-btn">Speichern</button>
+                    <button type="button" id="btnCancelEdit" class="action-btn cancel-btn">Abbrechen</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: URL-Import -->
+    <div id="importModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Programm importieren</h2>
+            <div class="form-group">
+                <label for="importUrl">URL des Reifebuchs:</label>
+                <input type="text" id="importUrl" placeholder="https://reifeschrank.b50.de/pages/reifebuch.php?recipe_id=3">
+            </div>
+            <div class="form-actions">
+                <button type="button" id="btnDoImport" class="action-btn save-btn">Importieren</button>
+                <button type="button" id="btnCancelImport" class="action-btn cancel-btn">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/programs.js') }}"></script>
+</body>
+</html>
