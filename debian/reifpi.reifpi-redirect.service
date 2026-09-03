@@ -1,0 +1,29 @@
+[Unit]
+Description=ReifungsPi — Weiterleitung von Port 80 auf :5000 (reifpi-redirect)
+Documentation=https://github.com/Beachbone/reifpi
+After=network.target
+# Kein "Requires=reifpi.service" — der Redirect soll auch dann funktionieren
+# (bzw. sich zumindest gefahrlos zurückziehen), wenn der Hauptdienst gerade
+# neu startet.
+
+[Service]
+Type=simple
+User=reifpi
+Group=reifpi
+# Reine Standardbibliothek — bewusst kein venv-Python, damit dieser Dienst
+# unabhängig vom venv-Setup in reifpi.service funktioniert.
+ExecStart=/usr/bin/python3 /opt/reifpi/redirect.py
+Restart=on-failure
+RestartSec=5
+
+# Port 80 ist ein privilegierter Port (<1024). Statt root braucht der
+# Dienst nur genau dieses eine Recht, alles andere bleibt beim
+# unprivilegierten reifpi-User.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+ProtectSystem=strict
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

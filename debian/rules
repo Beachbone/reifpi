@@ -14,5 +14,12 @@ override_dh_auto_test:
 override_dh_auto_install:
 	mkdir -p debian/reifpi/opt/reifpi
 	cp -r app debian/reifpi/opt/reifpi/
-	cp run.py requirements.txt debian/reifpi/opt/reifpi/
+	cp run.py requirements.txt redirect.py debian/reifpi/opt/reifpi/
 	find debian/reifpi/opt/reifpi -name '__pycache__' -type d -exec rm -rf {} +
+
+override_dh_installsystemd:
+	# Zwei Units in einem Paket — debhelper erkennt automatisch nur
+	# debian/reifpi.service, die zweite muss explizit per --name rein
+	# (sucht dann nach debian/reifpi.<name>.service).
+	dh_installsystemd --name=reifpi
+	dh_installsystemd --name=reifpi-redirect

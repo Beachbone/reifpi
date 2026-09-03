@@ -1,3 +1,16 @@
+reifpi (0.1.2) unstable; urgency=medium
+
+  * Neuer optionaler Dienst reifpi-redirect.service: leitet Port 80 per
+    302 auf :5000 weiter, damit die reine IP im Browser reicht. Bindet
+    Port 80 nur, wenn er frei ist, und weicht anderen Webservern
+    (jetzigen wie zukünftig installierten) automatisch — versucht es
+    bei belegtem Port alle 30s erneut, statt sich aufzudrängen.
+    Noch NICHT auf dem Test-Pi aktiviert (Port 80 dort aktuell noch von
+    lighttpd/alter PHP-App belegt, Aktivierung wartet auf das
+    Altlasten-Aufräumen).
+
+ -- Jürgen Auerbach <J.Auerbach@b50.de>  Thu, 03 Sep 2026 21:25:34 +0200
+
 reifpi (0.1.1) unstable; urgency=medium
 
   * Fix: PrivateTmp=true ergänzt — ohne eigenes /tmp brach gunicorns
