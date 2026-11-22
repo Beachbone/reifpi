@@ -13,7 +13,7 @@ from app.db.schema import ALL_TABLES
 
 logger = logging.getLogger(__name__)
 
-CURRENT_SCHEMA_VERSION = 7
+CURRENT_SCHEMA_VERSION = 8
 
 # Spalten der Nachlauf-Kompensation (v7) — alle mit Default 0 = aus
 _V7_COLUMNS = (
@@ -28,6 +28,16 @@ _V7_COLUMNS = (
     ("min_off_secs_mois",         "INTEGER"),
     ("lock_secs_heat_after_cool", "INTEGER"),
     ("lock_secs_cool_after_heat", "INTEGER"),
+)
+
+# Spalten des geplanten Luftwechsels (v8): (Name, Typ, Default)
+_V8_COLUMNS = (
+    ("air_interval_h",    "INTEGER", "0"),
+    ("air_duration_min",  "INTEGER", "5"),
+    ("air_short_pct",     "INTEGER", "50"),
+    ("air_abort_temp_k",  "REAL",    "2.0"),
+    ("air_abort_hum_pct", "REAL",    "10.0"),
+    ("air_last_exchange", "REAL",    "0"),
 )
 
 
@@ -69,6 +79,9 @@ def apply_migrations(db: Database, default_config: dict) -> None:
         if current_version < 7:
             _migrate_v6_to_v7(db)
             _set_schema_version(db, 7)
+        if current_version < 8:
+            _migrate_v7_to_v8(db)
+            _set_schema_version(db, 8)
         logger.info("Migration abgeschlossen.")
 
     logger.info(f"Datenbankschema Version {CURRENT_SCHEMA_VERSION} — OK.")
@@ -173,6 +186,16 @@ def _migrate_v6_to_v7(db: Database) -> None:
             logger.info(f"Migration v7: {col} Spalte hinzugefügt.")
         except Exception as e:
             logger.warning(f"Migration v7 ({col}) übersprungen: {e}")
+
+
+def _migrate_v7_to_v8(db: Database) -> None:
+    """v7 → v8: Geplanter Luftwechsel (Intervall, Dauer, Abbruchgrenzen)."""
+    for col, sql_type, default in _V8_COLUMNS:
+        try:
+            db.execute(f"ALTER TABLE config ADD COLUMN {col} {sql_type} NOT NULL DEFAULT {default}")
+            logger.info(f"Migration v8: {col} Spalte hinzugefügt.")
+        except Exception as e:
+            logger.warning(f"Migration v8 ({col}) übersprungen: {e}")
 
 
 def _init_config(db: Database, defaults: dict) -> None:

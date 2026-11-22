@@ -398,6 +398,16 @@ body.page-settings {
     line-height: 1.4;
 }
 
+.sp-status {
+    margin: 0;
+    padding: 8px 10px;
+    background-color: #1f2a2c;
+    border-radius: 6px;
+    color: #b2ebf2;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
 .sp-warning {
     margin: -4px 0 0;
     color: #ffb74d;

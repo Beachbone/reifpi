@@ -1,3 +1,15 @@
+reifpi (0.1.7) unstable; urgency=medium
+
+  * Neu: Geplanter Luftwechsel. Alle air_interval_h Stunden läuft für
+    air_duration_min Minuten Frischluft und Umluft; die Regelung läuft
+    weiter. Ist die Außenluft feuchter (und innen nicht zu trocken), wird
+    verkürzt gelüftet; ändern sich Temperatur oder Feuchte trotzdem zu
+    stark, bricht der Luftwechsel ab. In beiden Fällen neuer Versuch nach
+    1/4 Intervall. Zeitpunkt des letzten Luftwechsels übersteht Neustarts.
+    Schema v8, Karte "Luftwechsel" in den Einstellungen mit Status.
+
+ -- Jürgen Auerbach <J.Auerbach@b50.de>  Sun, 22 Nov 2026 20:00:00 +0100
+
 reifpi (0.1.6) unstable; urgency=medium
 
   * Einstellungsseite neu, mobile first: Reiter Regelung/Melden/Hardware/

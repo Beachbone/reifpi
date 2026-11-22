@@ -109,6 +109,32 @@
                     </div>
                 </section>
 
+                <section class="sp-card" aria-labelledby="h-air">
+                    <h2 id="h-air"><img src="{{ url_for('static', filename='icons/automatic.png') }}" alt="" class="sp-icon">Luftwechsel</h2>
+                    <p class="sp-rule">Frischluft nach Intervall, die Regelung läuft weiter. Ist die Außenluft feuchter, wird verkürzt gelüftet; bei starker Änderung Abbruch – dann neuer Versuch nach ¼ Intervall. Intervall 0 = aus.</p>
+                    <p class="sp-status" id="airStatus" aria-live="polite">—</p>
+                    <div class="sp-field">
+                        <label for="cfgAirInterval">Intervall <span class="sp-unit">h</span></label>
+                        <input type="number" id="cfgAirInterval" data-stepper inputmode="numeric" step="1" min="0" max="168">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgAirDuration">Dauer <span class="sp-unit">min</span></label>
+                        <input type="number" id="cfgAirDuration" data-stepper inputmode="numeric" step="1" min="1" max="60">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgAirShort">Verkürzt auf <span class="sp-unit">% der Dauer, wenn außen feuchter</span></label>
+                        <input type="number" id="cfgAirShort" data-stepper inputmode="numeric" step="10" min="10" max="100">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgAirAbortTemp">Abbruch bei Temperatur­änderung <span class="sp-unit">K</span></label>
+                        <input type="number" id="cfgAirAbortTemp" data-stepper inputmode="decimal" step="0.5" min="0.5" max="20">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgAirAbortHum">Abbruch bei Feuchte­änderung <span class="sp-unit">%rF</span></label>
+                        <input type="number" id="cfgAirAbortHum" data-stepper inputmode="numeric" step="1" min="1" max="50">
+                    </div>
+                </section>
+
                 <section class="sp-card" aria-labelledby="h-lock">
                     <h2 id="h-lock"><img src="{{ url_for('static', filename='icons/lock.png') }}" alt="" class="sp-icon">Sperren &amp; Zyklus</h2>
                     <div class="sp-field">

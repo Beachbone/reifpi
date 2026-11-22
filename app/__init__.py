@@ -21,6 +21,7 @@ from app.core.gpio_manager import GpioManager
 from app.core.sensors     import build_sensor_manager
 from app.core.program_runner import ProgramRunner
 from app.core.controller  import ReifpiController
+from app.core.air_exchange import AirExchange
 
 
 def create_app(env: str | None = None) -> Flask:
@@ -150,6 +151,7 @@ def create_app(env: str | None = None) -> Flask:
         sensor_fail_threshold    = cfg.SENSOR_FAIL_THRESHOLD,
         compressor_protect_secs  = cfg.COMPRESSOR_PROTECT_SECS,
         rate_window_secs         = cfg.RATE_WINDOW_SECS,
+        air_exchange             = AirExchange(db),
     )
     app.controller = controller  # type: ignore[attr-defined]
 

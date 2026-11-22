@@ -54,6 +54,17 @@ CREATE TABLE IF NOT EXISTS config (
     lock_secs_cool_after_heat INTEGER NOT NULL DEFAULT 0,
     -- s: Kühlung gesperrt nach Abschalten der Heizung
 
+    -- Geplanter Luftwechsel (air_interval_h = 0: aus)
+    air_interval_h          INTEGER NOT NULL DEFAULT 0,
+    air_duration_min        INTEGER NOT NULL DEFAULT 5,
+    air_short_pct           INTEGER NOT NULL DEFAULT 50,
+    -- % der Dauer bei ungünstiger Außenluft
+    air_abort_temp_k        REAL    NOT NULL DEFAULT 2.0,
+    air_abort_hum_pct       REAL    NOT NULL DEFAULT 10.0,
+    -- Abbruch bei dieser Änderung gegenüber dem Start
+    air_last_exchange       REAL    NOT NULL DEFAULT 0,
+    -- Laufzeitwert: letzter erfolgreicher Luftwechsel (Unix-Zeit)
+
     -- Steuerung
     refreshrate             INTEGER NOT NULL DEFAULT 30,
     -- Regelzyklus in Sekunden

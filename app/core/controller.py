@@ -19,6 +19,7 @@ from app.core.state import SystemState, StateManager
 from app.core.sensors import SensorManager
 from app.core.gpio_manager import GpioManager
 from app.core.program_runner import ProgramRunner
+from app.core.air_exchange import AirExchange, ACTIVE, ENDED, IDLE
 from app.db.archive_writer import ArchiveWriter
 from app.utils.physics import outside_is_wetter, outside_is_drier
 
@@ -54,6 +55,7 @@ class ReifpiController:
         sensor_fail_threshold: int = 3,
         compressor_protect_secs: int = 300,
         rate_window_secs: int = 90,
+        air_exchange: AirExchange | None = None,
     ) -> None:
         self._state          = state
         self._state_mgr      = state_manager
@@ -65,6 +67,7 @@ class ReifpiController:
         self._fail_threshold = sensor_fail_threshold
         self._comp_protect   = compressor_protect_secs
         self._rate_window    = rate_window_secs
+        self._air            = air_exchange   # None = kein geplanter Luftwechsel
         # Messverlauf Innensensor für die Steigung: (timestamp, temp, hum)
         self._history: deque[tuple[float, float, float]] = deque()
 
@@ -131,18 +134,25 @@ class ReifpiController:
 
         # 3. Regelung oder Safe-Mode
         if self._state.safe_mode:
+            self._cancel_air_exchange()
             self._apply_safe_mode()
         elif self._state.mode == MODE_MEASURE_ONLY:
+            self._cancel_air_exchange()
             self._all_relays_off()
         elif self._state.mode == MODE_MANUAL:
-            pass   # Im Manuell-Modus keine automatische Regelung
+            self._cancel_air_exchange()   # Im Manuell-Modus keine automatische Regelung
         else:
             # 4. Reifeprogramm prüfen — neue Sollwerte sofort speichern,
             #    sonst setzt reload_config() sie im nächsten Zyklus zurück
             if self._programs.check_and_advance(self._state):
                 self._state_mgr.persist_config(self._state)
-            # 5. Regellogik
+            # 5. Regeln; ein laufender Luftwechsel erzwingt danach
+            #    Frischluft + Umluft, die Regelung gleicht weiter aus
+            air = self._update_air_exchange(time.time())
             self._regulate()
+            if air == ACTIVE:
+                self._state.relay_fana = True
+                self._state.relay_fanu = True
 
         # 6. GPIO-Ausgänge setzen
         self._gpio.apply_state(self._state)
@@ -185,6 +195,23 @@ class ReifpiController:
         # Waage (optional)
         if reading.weight is not None:
             self._state.weight = reading.weight
+
+    # ── Geplanter Luftwechsel ─────────────────────────────────────────────────
+
+    def _update_air_exchange(self, now: float) -> str:
+        """Luftwechsel prüfen (ACTIVE: Aufrufer erzwingt Frischluft + Umluft)."""
+        if self._air is None:
+            return IDLE
+        result = self._air.update(self._state, now)
+        if result == ENDED:
+            # Frischluft aus; die Regelung entscheidet im selben Zyklus neu
+            self._state.relay_fana = False
+        return result
+
+    def _cancel_air_exchange(self) -> None:
+        if self._air is not None and self._state.air_active:
+            self._air.cancel(self._state, time.time())
+            self._state.relay_fana = False
 
     # ── Regellogik ────────────────────────────────────────────────────────────
 
@@ -480,6 +507,10 @@ class ReifpiController:
             for key, value in kwargs.items():
                 if hasattr(self._state, key):
                     setattr(self._state, key, value)
+            # Neues Intervall gilt sofort: Termin ab letztem Luftwechsel neu
+            if self._air is not None and "air_interval_h" in kwargs:
+                self._state.air_next_due = None
+                self._air.schedule(self._state, time.time())
             self._state_mgr.persist_config(self._state)
             self._state_mgr.write_state_file(self._state)
 

@@ -37,6 +37,15 @@ COMPENSATION_FIELDS: tuple[tuple[str, type], ...] = (
     ("lock_secs_cool_after_heat", int),
 )
 
+# Einstellungen des geplanten Luftwechsels: (Attribut = DB-Spalte, Typ)
+AIR_FIELDS: tuple[tuple[str, type], ...] = (
+    ("air_interval_h",            int),
+    ("air_duration_min",          int),
+    ("air_short_pct",             int),
+    ("air_abort_temp_k",          float),
+    ("air_abort_hum_pct",         float),
+)
+
 
 @dataclass
 class SystemState:
@@ -68,6 +77,13 @@ class SystemState:
     min_off_secs_mois:         int   = 0
     lock_secs_heat_after_cool: int   = 0     # Heizsperre nach Kühlende
     lock_secs_cool_after_heat: int   = 0     # Kühlsperre nach Heizende
+
+    # ── Geplanter Luftwechsel (air_interval_h = 0: aus) ─────────────────────
+    air_interval_h:            int   = 0
+    air_duration_min:          int   = 5
+    air_short_pct:             int   = 50
+    air_abort_temp_k:          float = 2.0
+    air_abort_hum_pct:         float = 10.0
 
     # ── GPIO-Pins (aus Config, Neustart erforderlich bei Änderung) ───────────
     gpio_pin_fanu:          int   = 27
@@ -108,6 +124,17 @@ class SystemState:
     cool_last_off:          float = 0.0
     heat_last_off:          float = 0.0
     mois_last_off:          float = 0.0
+
+    # ── Luftwechsel (Laufzeit) ───────────────────────────────────────────────
+    air_last_exchange:      float = 0.0          # aus DB, letzter Erfolg
+    air_active:             bool  = False
+    air_short:              bool  = False        # verkürzt (ungünstige Außenluft)
+    air_started:            float | None = None
+    air_end:                float | None = None
+    air_start_temp:         float | None = None
+    air_start_hum:          float | None = None
+    air_next_due:           float | None = None
+    air_last_result:        str   = ""
 
     # ── Safe-Mode ─────────────────────────────────────────────────────────────
     safe_mode:              bool  = False
@@ -183,8 +210,9 @@ class StateManager:
             gpio_pin_heat       = int(row["gpio_pin_heat"]),
             relay_active_high   = bool(row["relay_active_high"]),
         )
-        for attr, cast in COMPENSATION_FIELDS:
+        for attr, cast in COMPENSATION_FIELDS + AIR_FIELDS:
             setattr(state, attr, cast(row[attr]))
+        state.air_last_exchange = float(row["air_last_exchange"])
         logger.info(
             f"State aus DB geladen — Soll: {state.target_temp}°C / "
             f"{state.target_hum}%rF, Modus: {state.mode}"
@@ -217,7 +245,7 @@ class StateManager:
             ("aht21_hyst_humidify", float, "aht21_hyst_humidify"),
             ("aht21_hyst_protect",  float, "aht21_hyst_protect"),
             ("refreshrate",         int,   "refreshrate"),
-        ] + [(attr, cast, attr) for attr, cast in COMPENSATION_FIELDS]
+        ] + [(attr, cast, attr) for attr, cast in COMPENSATION_FIELDS + AIR_FIELDS]
         for attr, cast, col in fields:
             new_val = cast(row[col])
             if getattr(state, attr) != new_val:
@@ -319,7 +347,7 @@ class StateManager:
         Schreibt die Konfigurationsfelder des State zurück in die DB.
         Wird aufgerufen wenn die API Konfigurationsänderungen empfängt.
         """
-        comp_set = "".join(f"{attr} = :{attr}, " for attr, _ in COMPENSATION_FIELDS)
+        comp_set = "".join(f"{attr} = :{attr}, " for attr, _ in COMPENSATION_FIELDS + AIR_FIELDS)
         self._db.execute(
             f"""
             UPDATE config SET
@@ -353,7 +381,7 @@ class StateManager:
                 "aht21_hyst_protect":  state.aht21_hyst_protect,
                 "refreshrate":         state.refreshrate,
                 "now":                 time.time(),
-                **{attr: getattr(state, attr) for attr, _ in COMPENSATION_FIELDS},
+                **{attr: getattr(state, attr) for attr, _ in COMPENSATION_FIELDS + AIR_FIELDS},
             },
         )
 

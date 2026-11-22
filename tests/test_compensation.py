@@ -387,7 +387,7 @@ def test_migration_v6_to_v7():
     cols = {r["name"] for r in db.fetchall("PRAGMA table_info(config)")}
     assert v7_cols <= cols, f"Fehlende Spalten: {v7_cols - cols}"
     version = db.fetchscalar("SELECT MAX(version) FROM schema_version")
-    assert version == CURRENT_SCHEMA_VERSION == 7
+    assert version == CURRENT_SCHEMA_VERSION >= 7
     row = db.fetchone("SELECT * FROM config WHERE id = 1")
     assert all(row[c] == 0 for c in v7_cols)
     assert row["target_temp"] == 15.0, "Bestehende Werte bleiben erhalten"

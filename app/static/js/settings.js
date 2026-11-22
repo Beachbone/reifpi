@@ -41,6 +41,11 @@ document.addEventListener('DOMContentLoaded', () => {
         cfgMinOffMois:        'min_off_secs_mois',
         cfgLockHeatAfterCool: 'lock_secs_heat_after_cool',
         cfgLockCoolAfterHeat: 'lock_secs_cool_after_heat',
+        cfgAirInterval:       'air_interval_h',
+        cfgAirDuration:       'air_duration_min',
+        cfgAirShort:          'air_short_pct',
+        cfgAirAbortTemp:      'air_abort_temp_k',
+        cfgAirAbortHum:       'air_abort_hum_pct',
         cfgRefreshrate:       'refreshrate',
         cfgArchHandling:      'arch_handling',
         cfgAhtHumidify:       'aht21_hyst_humidify',
@@ -330,7 +335,12 @@ document.addEventListener('DOMContentLoaded', () => {
             body:    JSON.stringify(payload),
         });
         const r = await resp.json();
-        if (r.ok) await loadSettings();
+        if (r.ok) {
+            await loadSettings();
+            // Der Termin entsteht erst im nächsten Regelzyklus
+            setTimeout(updateAirStatus, 1500);
+            setTimeout(updateAirStatus, 12000);
+        }
         return r;
     }
 
@@ -408,6 +418,33 @@ document.addEventListener('DOMContentLoaded', () => {
         if (ok) window.location.href = '/hardware_setup';
     });
 
+    // ── Status Luftwechsel ────────────────────────────────────────────────────
+
+    async function updateAirStatus() {
+        const el = document.getElementById('airStatus');
+        if (!el) return;
+        try {
+            const resp = await fetch('/api/status');
+            if (!resp.ok) return;
+            const st  = await resp.json();
+            const fmt = ts => new Date(ts * 1000).toLocaleString('de-DE', {
+                weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+            });
+            let text;
+            if (!st.air_interval_h) {
+                text = 'Aus';
+            } else if (st.air_active) {
+                text = `Läuft${st.air_short ? ' verkürzt' : ''} bis ${fmt(st.air_end)}`;
+            } else if (st.air_next_due) {
+                text = `Nächster: ${fmt(st.air_next_due)}`;
+            } else {
+                text = 'Aktiv – Termin wird berechnet …';
+            }
+            if (st.air_last_result) text += ` · Zuletzt: ${st.air_last_result}`;
+            el.textContent = text;
+        } catch (e) { /* nicht kritisch */ }
+    }
+
     // ── Außensensor-Karte ein-/ausblenden ─────────────────────────────────────
 
     async function updateExternPanel() {
@@ -427,4 +464,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadSettings();
     loadDbInfo();
     updateExternPanel();
+    updateAirStatus();
+    setInterval(updateAirStatus, 30000);
 });
