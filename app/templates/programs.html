@@ -11,7 +11,10 @@
     <div id="message-container" class="message-container"></div>
 
     <div class="control-panel">
-        <h1>Reifungsprogramme</h1>
+        <header class="page-header">
+            <a class="page-back" href="{{ url_for('web.index') }}">← Dashboard</a>
+            <h1>Reifungsprogramme</h1>
+        </header>
 
         <div class="sort-options">
             <label for="sortSelect">Sortieren nach:</label>
@@ -30,7 +33,6 @@
         <div class="control-buttons">
             <button id="btnAddProgram">Neues Programm</button>
             <button id="btnImportProgram">Von URL importieren</button>
-            <button id="btnBack" onclick="window.location.href='{{ url_for('web.index') }}'">← Zurück</button>
         </div>
     </div>
 

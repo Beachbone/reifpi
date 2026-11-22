@@ -15,7 +15,10 @@
 </head>
 <body>
     <div class="container">
-        <h1>Historische Daten</h1>
+        <header class="page-header">
+            <a class="page-back" href="{{ url_for('web.index') }}">← Dashboard</a>
+            <h1>Historische Daten</h1>
+        </header>
 
         <div class="controls">
             <label for="timeframeSelect">Zeitraum:</label>
@@ -49,8 +52,6 @@
                 <canvas id="relayChart"></canvas>
             </div>
         </div>
-
-        <a href="{{ url_for('web.index') }}" class="back-button">← Zurück zur Steuerung</a>
     </div>
 
     <script src="{{ url_for('static', filename='js/archive.js') }}"></script>

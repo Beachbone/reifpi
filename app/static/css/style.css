@@ -850,3 +850,54 @@ body.manual-mode-active .status-item img {
 .display-section:not(.extern-section) .value-display-small {
     justify-content: center;
 }
+
+/* ±-Tasten: Gedrückthalten soll keinen Text markieren / kein Kontextmenü öffnen */
+.control-button {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+/* ── Seitenkopf der Unterseiten: Link zurück zum Dashboard + Titel ─────────
+   Handy: Link über dem Titel; ab 640 px Titel links, Link rechts. */
+.page-header {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+}
+
+.page-header h1 {
+    margin: 4px 0 8px;
+    font-size: 1.5em;
+}
+
+.page-back {
+    align-self: flex-start;
+    color: #4dd0e1;
+    text-decoration: none;
+    padding: 10px 0;           /* Tippfläche ≥ 44 px */
+    font-size: 1em;
+}
+.page-back:hover { text-decoration: underline; }
+.page-back:focus-visible {
+    outline: 3px solid #ffd54f;
+    outline-offset: 2px;
+}
+
+/* Unterseiten beginnen oben statt vertikal zentriert (Dashboard unverändert) */
+body:has(.page-header) {
+    align-items: flex-start;
+}
+.control-panel > .page-header {
+    padding-top: 12px;
+}
+
+@media (min-width: 640px) {
+    .page-header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .page-header h1 { order: -1; }
+}

@@ -11,7 +11,10 @@
     <div id="message-container" class="message-container"></div>
 
     <div class="control-panel">
-        <h1>Hardware Setup</h1>
+        <header class="page-header">
+            <a class="page-back" href="{{ url_for('web.index') }}">← Dashboard</a>
+            <h1>Hardware Setup</h1>
+        </header>
         <p style="color:#ff9800; margin-bottom:20px; font-size:0.95em;">
             Diese Seite dient der einmaligen Hardware-Konfiguration.<br>
             Änderungen werden erst nach einem Service-Neustart aktiv.
@@ -97,7 +100,7 @@
 
         <div class="control-buttons">
             <button id="btnSaveHardware">Einstellungen speichern</button>
-            <button onclick="window.location.href='{{ url_for('web.settings') }}'">← Zurück</button>
+            <button onclick="window.location.href='{{ url_for('web.settings') }}'">← Einstellungen</button>
         </div>
     </div>
 

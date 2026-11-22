@@ -7,273 +7,283 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/settings.css') }}">
 </head>
-<body>
-    <div id="message-container" class="message-container"></div>
+<body class="page-settings">
+    <div id="message-container" class="message-container" role="status" aria-live="polite"></div>
 
-    <div class="control-panel">
-        <h1>Einstellungen Reifeschrank</h1>
+    <main class="sp">
+        <header class="page-header">
+            <a class="page-back" href="{{ url_for('web.index') }}">← Dashboard</a>
+            <h1>Einstellungen</h1>
+        </header>
 
-        <!-- Regelung -->
-        <div class="settings-panel">
-            <h3>Regelung</h3>
-            <div class="settings-grid">
-                <div class="settings-field">
-                    <label for="cfgTargetTemp">Soll-Temperatur (°C)</label>
-                    <input type="number" id="cfgTargetTemp" step="0.1" min="-50" max="60">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgTargetHum">Soll-Luftfeuchtigkeit (%)</label>
-                    <input type="number" id="cfgTargetHum" step="0.5" min="0" max="100">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgHystCool">Hysterese Kühlen (°C)</label>
-                    <input type="number" id="cfgHystCool" step="0.1" min="0.1" max="20">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgHystHeat">Hysterese Heizen (°C)</label>
-                    <input type="number" id="cfgHystHeat" step="0.1" min="0.1" max="20">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgHystMois">Hysterese Befeuchten (%)</label>
-                    <input type="number" id="cfgHystMois" step="0.1" min="0.1" max="50">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgHystFana">Hysterese Belüften (%)</label>
-                    <input type="number" id="cfgHystFana" step="0.1" min="0.1" max="50">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgRefreshrate">Regelzyklus (Sek.)</label>
-                    <input type="number" id="cfgRefreshrate" step="1" min="1" max="3600">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgArchHandling">Archiv-Limit (Einträge)</label>
-                    <input type="number" id="cfgArchHandling" step="100" min="100" max="100000">
-                </div>
-            </div>
+        <!-- Reiter -->
+        <div class="sp-tabs" role="tablist" aria-label="Bereiche der Einstellungen">
+            <button type="button" role="tab" id="tab-regelung" aria-controls="panel-regelung" aria-selected="true">Regelung</button>
+            <button type="button" role="tab" id="tab-melden" aria-controls="panel-melden" aria-selected="false" tabindex="-1">Melden</button>
+            <button type="button" role="tab" id="tab-hardware" aria-controls="panel-hardware" aria-selected="false" tabindex="-1">Hardware</button>
+            <button type="button" role="tab" id="tab-system" aria-controls="panel-system" aria-selected="false" tabindex="-1">System</button>
         </div>
 
-        <!-- Nachlauf-Kompensation -->
-        <div class="settings-panel">
-            <h3>Nachlauf-Kompensation</h3>
-            <p class="settings-hint">
-                Heizung, Kühlung und Befeuchter wirken nach dem Abschalten nach.
-                Offset: Abschalten so viel vor dem Sollwert.
-                Vorhaltzeit: Abschalten, sobald der Wert bei aktuellem Tempo in dieser Zeit den Abschaltpunkt erreichen würde.
-                Der Offset wird auf die jeweilige Hysterese begrenzt. 0 = aus.
-            </p>
-            <div class="settings-grid">
-                <div class="settings-field">
-                    <label for="cfgOffsetCool">Offset Kühlen (°C)</label>
-                    <input type="number" id="cfgOffsetCool" step="0.1" min="0" max="10">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgOffsetHeat">Offset Heizen (°C)</label>
-                    <input type="number" id="cfgOffsetHeat" step="0.1" min="0" max="10">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgOffsetMois">Offset Befeuchten (%)</label>
-                    <input type="number" id="cfgOffsetMois" step="0.1" min="0" max="20">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgLeadCool">Vorhaltzeit Kühlen (Sek.)</label>
-                    <input type="number" id="cfgLeadCool" step="1" min="0" max="1800">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgLeadHeat">Vorhaltzeit Heizen (Sek.)</label>
-                    <input type="number" id="cfgLeadHeat" step="1" min="0" max="1800">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgLeadMois">Vorhaltzeit Befeuchten (Sek.)</label>
-                    <input type="number" id="cfgLeadMois" step="1" min="0" max="1800">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgMinOffCool">Mindestpause Kühlen (Sek., mind. Kompressor-Schutzzeit)</label>
-                    <input type="number" id="cfgMinOffCool" step="1" min="0" max="3600">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgMinOffHeat">Mindestpause Heizen (Sek.)</label>
-                    <input type="number" id="cfgMinOffHeat" step="1" min="0" max="3600">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgMinOffMois">Mindestpause Befeuchten (Sek.)</label>
-                    <input type="number" id="cfgMinOffMois" step="1" min="0" max="3600">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgLockHeatAfterCool">Heizsperre nach Kühlende (Sek.)</label>
-                    <input type="number" id="cfgLockHeatAfterCool" step="1" min="0" max="7200">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgLockCoolAfterHeat">Kühlsperre nach Heizende (Sek.)</label>
-                    <input type="number" id="cfgLockCoolAfterHeat" step="1" min="0" max="7200">
-                </div>
-            </div>
-        </div>
+        <!-- ── Regelung ─────────────────────────────────────────────────── -->
+        <section class="sp-panel" role="tabpanel" id="panel-regelung" aria-labelledby="tab-regelung">
+            <details class="sp-explain">
+                <summary>Wie wirken die Werte?</summary>
+                <p><strong>Hysterese:</strong> So weit muss der Istwert vom Soll abweichen, bevor das Gerät einschaltet.</p>
+                <p><strong>Offset:</strong> Das Gerät schaltet so viel <em>vor</em> dem Sollwert ab, weil es nachwirkt. Höchstens so groß wie die Hysterese.</p>
+                <p><strong>Vorhaltzeit:</strong> Das Gerät schaltet ab, sobald der Wert beim aktuellen Tempo innerhalb dieser Zeit den Abschaltpunkt erreichen würde.</p>
+                <p><strong>Mindestpause:</strong> So lange bleibt das Gerät nach dem Abschalten mindestens aus. Für den Kompressor gilt mindestens die Schutzzeit von 5 Minuten.</p>
+                <p>0 schaltet Offset, Vorhaltzeit, Pause und Sperre ab.</p>
+                <p>Die Sollwerte stellst du im Dashboard ein.</p>
+            </details>
 
-        <!-- Außensensor -->
-        <div class="settings-panel" id="panelExternSensor">
-            <h3>Außensensor</h3>
-            <div class="settings-grid">
-                <div class="settings-field">
-                    <label for="cfgAhtHumidify">Hysterese Befeuchten via Außenluft (%rF unter Soll)</label>
-                    <input type="number" id="cfgAhtHumidify" step="0.1" min="0.1" max="50">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgAhtProtect">Schutz-Hysterese (%rF über Soll)</label>
-                    <input type="number" id="cfgAhtProtect" step="0.1" min="0.1" max="50">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgAbsHumThreshold">Mindestdifferenz abs. Feuchte (g/m³)</label>
-                    <input type="number" id="cfgAbsHumThreshold" step="0.1" min="0" max="50">
-                </div>
-            </div>
-        </div>
-
-        <!-- GPIO-Pins -->
-        <div class="settings-panel">
-            <h3>GPIO-Pins (Relais)</h3>
-            <p class="settings-warning">Änderungen werden erst nach Service-Neustart aktiv.</p>
-            <div class="settings-grid">
-                <div class="settings-field" style="grid-column: 1 / -1;">
-                    <div class="toggle-field">
-                        <label id="lblRelayActiveHigh">Active-Low</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="cfgRelayActiveHigh">
-                            <span class="slider"></span>
-                        </label>
+            <div class="sp-cards">
+                <section class="sp-card" aria-labelledby="h-cool">
+                    <h2 id="h-cool"><img src="{{ url_for('static', filename='icons/cool.png') }}" alt="" class="sp-icon">Kühlen</h2>
+                    <p class="sp-rule">Ein über Soll + Hysterese · aus bei Soll + Offset</p>
+                    <div class="sp-field">
+                        <label for="cfgHystCool">Hysterese <span class="sp-unit">K</span></label>
+                        <input type="number" id="cfgHystCool" data-stepper inputmode="decimal" step="0.1" min="0.1" max="20">
                     </div>
-                </div>
-            </div>
-            <div class="settings-grid">
-                <div class="settings-field">
-                    <label for="cfgGpioFanu">FANU — Umluft (GPIO)</label>
-                    <input type="number" id="cfgGpioFanu" step="1" min="1" max="40">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgGpioCool">COOL — Kühlung (GPIO)</label>
-                    <input type="number" id="cfgGpioCool" step="1" min="1" max="40">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgGpioFana">FANA — Frischluft (GPIO)</label>
-                    <input type="number" id="cfgGpioFana" step="1" min="1" max="40">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgGpioMois">MOIS — Befeuchter (GPIO)</label>
-                    <input type="number" id="cfgGpioMois" step="1" min="1" max="40">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgGpioHeat">HEAT — Heizung (GPIO)</label>
-                    <input type="number" id="cfgGpioHeat" step="1" min="1" max="40">
-                </div>
-            </div>
-        </div>
+                    <div class="sp-field">
+                        <label for="cfgOffsetCool">Offset <span class="sp-unit">K</span></label>
+                        <input type="number" id="cfgOffsetCool" data-stepper inputmode="decimal" step="0.1" min="0" max="10">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgLeadCool">Vorhaltzeit <span class="sp-unit">s</span></label>
+                        <input type="number" id="cfgLeadCool" data-stepper inputmode="numeric" step="10" min="0" max="1800">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgMinOffCool">Mindestpause <span class="sp-unit">s</span></label>
+                        <input type="number" id="cfgMinOffCool" data-stepper inputmode="numeric" step="30" min="0" max="3600">
+                    </div>
+                </section>
 
-        <!-- E-Mail -->
-        <div class="settings-panel">
-            <h3>E-Mail Benachrichtigung</h3>
-            <div class="settings-grid">
-                <div class="settings-field" style="grid-column: 1 / -1;">
-                    <div class="toggle-field">
-                        <label>E-Mail aktiviert</label>
+                <section class="sp-card" aria-labelledby="h-heat">
+                    <h2 id="h-heat"><img src="{{ url_for('static', filename='icons/sunny.png') }}" alt="" class="sp-icon">Heizen</h2>
+                    <p class="sp-rule">Ein unter Soll − Hysterese · aus bei Soll − Offset</p>
+                    <div class="sp-field">
+                        <label for="cfgHystHeat">Hysterese <span class="sp-unit">K</span></label>
+                        <input type="number" id="cfgHystHeat" data-stepper inputmode="decimal" step="0.1" min="0.1" max="20">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgOffsetHeat">Offset <span class="sp-unit">K</span></label>
+                        <input type="number" id="cfgOffsetHeat" data-stepper inputmode="decimal" step="0.1" min="0" max="10">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgLeadHeat">Vorhaltzeit <span class="sp-unit">s</span></label>
+                        <input type="number" id="cfgLeadHeat" data-stepper inputmode="numeric" step="10" min="0" max="1800">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgMinOffHeat">Mindestpause <span class="sp-unit">s</span></label>
+                        <input type="number" id="cfgMinOffHeat" data-stepper inputmode="numeric" step="30" min="0" max="3600">
+                    </div>
+                </section>
+
+                <section class="sp-card" aria-labelledby="h-mois">
+                    <h2 id="h-mois"><img src="{{ url_for('static', filename='icons/rain.png') }}" alt="" class="sp-icon">Befeuchten</h2>
+                    <p class="sp-rule">Ein unter Soll − Hysterese · aus bei Soll − Offset</p>
+                    <div class="sp-field">
+                        <label for="cfgHystMois">Hysterese <span class="sp-unit">%rF</span></label>
+                        <input type="number" id="cfgHystMois" data-stepper inputmode="decimal" step="0.1" min="0.1" max="50">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgOffsetMois">Offset <span class="sp-unit">%rF</span></label>
+                        <input type="number" id="cfgOffsetMois" data-stepper inputmode="decimal" step="0.1" min="0" max="20">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgLeadMois">Vorhaltzeit <span class="sp-unit">s</span></label>
+                        <input type="number" id="cfgLeadMois" data-stepper inputmode="numeric" step="5" min="0" max="1800">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgMinOffMois">Mindestpause <span class="sp-unit">s</span></label>
+                        <input type="number" id="cfgMinOffMois" data-stepper inputmode="numeric" step="10" min="0" max="3600">
+                    </div>
+                </section>
+
+                <section class="sp-card" aria-labelledby="h-fana">
+                    <h2 id="h-fana"><img src="{{ url_for('static', filename='icons/cloudy.png') }}" alt="" class="sp-icon">Belüften</h2>
+                    <p class="sp-rule">Frischluft ein über Soll-Feuchte + Hysterese · aus bei Soll</p>
+                    <div class="sp-field">
+                        <label for="cfgHystFana">Hysterese <span class="sp-unit">%rF</span></label>
+                        <input type="number" id="cfgHystFana" data-stepper inputmode="decimal" step="0.1" min="0.1" max="50">
+                    </div>
+                </section>
+
+                <section class="sp-card" aria-labelledby="h-lock">
+                    <h2 id="h-lock"><img src="{{ url_for('static', filename='icons/lock.png') }}" alt="" class="sp-icon">Sperren &amp; Zyklus</h2>
+                    <div class="sp-field">
+                        <label for="cfgLockHeatAfterCool">Heizen gesperrt nach Kühlende <span class="sp-unit">s</span></label>
+                        <input type="number" id="cfgLockHeatAfterCool" data-stepper inputmode="numeric" step="60" min="0" max="7200">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgLockCoolAfterHeat">Kühlen gesperrt nach Heizende <span class="sp-unit">s</span></label>
+                        <input type="number" id="cfgLockCoolAfterHeat" data-stepper inputmode="numeric" step="60" min="0" max="7200">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgRefreshrate">Regelzyklus <span class="sp-unit">s</span></label>
+                        <input type="number" id="cfgRefreshrate" data-stepper inputmode="numeric" step="1" min="1" max="3600">
+                    </div>
+                </section>
+
+                <section class="sp-card" id="panelExternSensor" aria-labelledby="h-extern">
+                    <h2 id="h-extern"><img src="{{ url_for('static', filename='icons/umbrella.png') }}" alt="" class="sp-icon">Außenluft</h2>
+                    <p class="sp-rule">Frischluft nur, wenn die Außenluft passt (absolute Feuchte)</p>
+                    <div class="sp-field">
+                        <label for="cfgAhtHumidify">Befeuchten per Außenluft ab <span class="sp-unit">%rF unter Soll</span></label>
+                        <input type="number" id="cfgAhtHumidify" data-stepper inputmode="decimal" step="0.1" min="0.1" max="50">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgAhtProtect">Schutz ab <span class="sp-unit">%rF über Soll</span></label>
+                        <input type="number" id="cfgAhtProtect" data-stepper inputmode="decimal" step="0.1" min="0.1" max="50">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgAbsHumThreshold">Mindestdifferenz abs. Feuchte <span class="sp-unit">g/m³</span></label>
+                        <input type="number" id="cfgAbsHumThreshold" data-stepper inputmode="decimal" step="0.1" min="0" max="50">
+                    </div>
+                </section>
+            </div>
+        </section>
+
+        <!-- ── Melden ───────────────────────────────────────────────────── -->
+        <section class="sp-panel" role="tabpanel" id="panel-melden" aria-labelledby="tab-melden" hidden>
+            <div class="sp-cards">
+                <section class="sp-card" aria-labelledby="h-mail">
+                    <h2 id="h-mail">E-Mail</h2>
+                    <div class="sp-toggle">
+                        <label for="cfgMailEnabled">E-Mail aktiviert</label>
                         <label class="toggle-switch">
                             <input type="checkbox" id="cfgMailEnabled">
                             <span class="slider"></span>
                         </label>
                     </div>
-                </div>
-                <div class="settings-field">
-                    <label for="cfgMailSmtp">SMTP-Server</label>
-                    <input type="text" id="cfgMailSmtp" placeholder="smtp.example.com">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgMailPort">Port</label>
-                    <input type="number" id="cfgMailPort" step="1" min="1" max="65535">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgMailUser">Benutzername / Absender</label>
-                    <input type="text" id="cfgMailUser" placeholder="user@example.com">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgMailPassword">Passwort</label>
-                    <input type="password" id="cfgMailPassword" placeholder="(leer lassen = unverändert)">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgMailReceiver">Empfänger</label>
-                    <input type="text" id="cfgMailReceiver" placeholder="empfaenger@example.com">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgEmailSleep">Mindestabstand zwischen E-Mails (Min.)</label>
-                    <input type="number" id="cfgEmailSleep" step="1" min="1" max="1440">
-                </div>
-            </div>
-            <button class="test-btn" id="btnTestEmail">Test-E-Mail senden</button>
-        </div>
+                    <div class="sp-field">
+                        <label for="cfgMailSmtp">SMTP-Server</label>
+                        <input type="text" id="cfgMailSmtp" placeholder="smtp.example.com" autocomplete="off">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgMailPort">Port</label>
+                        <input type="number" id="cfgMailPort" inputmode="numeric" step="1" min="1" max="65535">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgMailUser">Benutzername / Absender</label>
+                        <input type="text" id="cfgMailUser" placeholder="user@example.com" autocomplete="off">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgMailPassword">Passwort</label>
+                        <input type="password" id="cfgMailPassword" placeholder="leer lassen = unverändert" autocomplete="new-password">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgMailReceiver">Empfänger</label>
+                        <input type="text" id="cfgMailReceiver" placeholder="empfaenger@example.com" autocomplete="off">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgEmailSleep">Mindestabstand <span class="sp-unit">min</span></label>
+                        <input type="number" id="cfgEmailSleep" data-stepper inputmode="numeric" step="5" min="1" max="1440">
+                    </div>
+                    <button type="button" class="sp-secondary" id="btnTestEmail">Test-E-Mail senden</button>
+                </section>
 
-        <!-- ntfy -->
-        <div class="settings-panel">
-            <h3>ntfy Push-Benachrichtigung</h3>
-            <div class="settings-grid">
-                <div class="settings-field" style="grid-column: 1 / -1;">
-                    <div class="toggle-field">
-                        <label>ntfy aktiviert</label>
+                <section class="sp-card" aria-labelledby="h-ntfy">
+                    <h2 id="h-ntfy">ntfy Push</h2>
+                    <div class="sp-toggle">
+                        <label for="cfgNtfyEnabled">ntfy aktiviert</label>
                         <label class="toggle-switch">
                             <input type="checkbox" id="cfgNtfyEnabled">
                             <span class="slider"></span>
                         </label>
                     </div>
-                </div>
-                <div class="settings-field">
-                    <label for="cfgNtfyServer">ntfy-Server</label>
-                    <input type="text" id="cfgNtfyServer" placeholder="https://ntfy.sh">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgNtfyTopic">Topic</label>
-                    <input type="text" id="cfgNtfyTopic" placeholder="mein-reifeschrank">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgNtfyUser">Benutzername (für Basic-Auth, sonst leer)</label>
-                    <input type="text" id="cfgNtfyUser" placeholder="benutzername">
-                </div>
-                <div class="settings-field">
-                    <label for="cfgNtfyToken">Passwort / Bearer-Token</label>
-                    <input type="password" id="cfgNtfyToken" placeholder="(leer lassen = unverändert)">
-                </div>
+                    <div class="sp-field">
+                        <label for="cfgNtfyServer">Server</label>
+                        <input type="text" id="cfgNtfyServer" placeholder="https://ntfy.sh" autocomplete="off">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgNtfyTopic">Topic</label>
+                        <input type="text" id="cfgNtfyTopic" placeholder="mein-reifeschrank" autocomplete="off">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgNtfyUser">Benutzername <span class="sp-unit">nur für Basic-Auth</span></label>
+                        <input type="text" id="cfgNtfyUser" autocomplete="off">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgNtfyToken">Passwort / Token</label>
+                        <input type="password" id="cfgNtfyToken" placeholder="leer lassen = unverändert" autocomplete="new-password">
+                    </div>
+                    <button type="button" class="sp-secondary" id="btnTestNtfy">Speichern &amp; Test senden</button>
+                </section>
             </div>
-            <button class="test-btn" id="btnTestNtfy">Setup speichern &amp; Testnachricht senden</button>
-        </div>
+        </section>
 
-        <!-- Datenbankinfo -->
-        <div class="settings-panel">
-            <h3>Datenbank / Archiv</h3>
-            <div class="db-info-section">
-                <div class="db-info-item">
-                    <span class="db-info-label">Einträge gesamt:</span>
-                    <span class="db-info-value" id="dbTotal">—</span>
-                </div>
-                <div class="db-info-item">
-                    <span class="db-info-label">Einträge (letzte 24 h):</span>
-                    <span class="db-info-value" id="dbLast24h">—</span>
-                </div>
-                <div class="db-info-item">
-                    <span class="db-info-label">Ältester Eintrag:</span>
-                    <span class="db-info-value" id="dbOldest">—</span>
-                </div>
-                <div class="db-info-item">
-                    <span class="db-info-label">Neuester Eintrag:</span>
-                    <span class="db-info-value" id="dbNewest">—</span>
-                </div>
+        <!-- ── Hardware ─────────────────────────────────────────────────── -->
+        <section class="sp-panel" role="tabpanel" id="panel-hardware" aria-labelledby="tab-hardware" hidden>
+            <div class="sp-cards">
+                <section class="sp-card" aria-labelledby="h-gpio">
+                    <h2 id="h-gpio">Relais (GPIO)</h2>
+                    <p class="sp-warning">Änderungen wirken erst nach einem Neustart des Dienstes.</p>
+                    <div class="sp-toggle">
+                        <label for="cfgRelayActiveHigh">Relais schalten bei <span id="lblRelayActiveHigh">LOW (active-low)</span></label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="cfgRelayActiveHigh">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="sp-pins">
+                        <div class="sp-field">
+                            <label for="cfgGpioCool">Kühlung</label>
+                            <input type="number" id="cfgGpioCool" inputmode="numeric" step="1" min="1" max="40">
+                        </div>
+                        <div class="sp-field">
+                            <label for="cfgGpioHeat">Heizung</label>
+                            <input type="number" id="cfgGpioHeat" inputmode="numeric" step="1" min="1" max="40">
+                        </div>
+                        <div class="sp-field">
+                            <label for="cfgGpioMois">Befeuchter</label>
+                            <input type="number" id="cfgGpioMois" inputmode="numeric" step="1" min="1" max="40">
+                        </div>
+                        <div class="sp-field">
+                            <label for="cfgGpioFanu">Umluft</label>
+                            <input type="number" id="cfgGpioFanu" inputmode="numeric" step="1" min="1" max="40">
+                        </div>
+                        <div class="sp-field">
+                            <label for="cfgGpioFana">Frischluft</label>
+                            <input type="number" id="cfgGpioFana" inputmode="numeric" step="1" min="1" max="40">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="sp-card" aria-labelledby="h-hw">
+                    <h2 id="h-hw">Sensoren</h2>
+                    <p class="sp-rule">Sensor-Typ und I2C-Adressen. Einmalige Einrichtung, danach Neustart des Dienstes.</p>
+                    <button type="button" class="sp-secondary" id="btnHardwareSetup">Hardware-Setup öffnen …</button>
+                </section>
             </div>
-        </div>
+        </section>
 
-        <!-- Hardware Setup -->
-        <div class="settings-panel">
-            <h3>Hardware Setup</h3>
-            <p class="settings-warning">Sensor-Typ und I2C-Adressen. Einmalige Konfiguration — erfordert Service-Neustart.</p>
-            <button class="test-btn" id="btnHardwareSetup">Hardware Setup öffnen …</button>
-        </div>
+        <!-- ── System ───────────────────────────────────────────────────── -->
+        <section class="sp-panel" role="tabpanel" id="panel-system" aria-labelledby="tab-system" hidden>
+            <div class="sp-cards">
+                <section class="sp-card" aria-labelledby="h-arch">
+                    <h2 id="h-arch"><img src="{{ url_for('static', filename='icons/database.png') }}" alt="" class="sp-icon">Archiv</h2>
+                    <div class="sp-field">
+                        <label for="cfgArchHandling">Höchstzahl Einträge</label>
+                        <input type="number" id="cfgArchHandling" data-stepper inputmode="numeric" step="1000" min="100" max="100000">
+                    </div>
+                    <dl class="sp-dbinfo">
+                        <div><dt>Einträge gesamt</dt><dd id="dbTotal">—</dd></div>
+                        <div><dt>Letzte 24 h</dt><dd id="dbLast24h">—</dd></div>
+                        <div><dt>Ältester Eintrag</dt><dd id="dbOldest">—</dd></div>
+                        <div><dt>Neuester Eintrag</dt><dd id="dbNewest">—</dd></div>
+                    </dl>
+                </section>
+            </div>
+        </section>
+    </main>
 
-        <div class="control-buttons">
-            <button id="btnSaveSettings">Einstellungen speichern</button>
-            <button onclick="window.location.href='{{ url_for('web.index') }}'">← Zurück</button>
+    <!-- Speichern-Leiste -->
+    <div class="sp-savebar">
+        <span id="dirtyInfo" class="sp-dirty" aria-live="polite">Keine Änderungen</span>
+        <div class="sp-savebar-actions">
+            <button type="button" id="btnDiscardSettings" class="sp-discard" disabled>Verwerfen</button>
+            <button type="button" id="btnSaveSettings" class="sp-save" disabled>Speichern</button>
         </div>
     </div>
 

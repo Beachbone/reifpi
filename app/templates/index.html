@@ -37,16 +37,16 @@
                 <span id="externTempDisplay" class="display-current-value seven-segment">--.-°C</span>
             </div>
             <div class="value-display-small">
-                <span class="label">Außen Feuchte</span>
-                <span id="externHumDisplay" class="display-current-value seven-segment">---%</span>
-            </div>
-            <div class="value-display-small">
                 <span class="label">Abs. LF Außen</span>
                 <span id="absHumExternDisplay" class="display-current-value seven-segment">-.-- g/m³</span>
             </div>
+            <div class="value-display-small">
+                <span class="label">Außen Feuchte</span>
+                <span id="externHumDisplay" class="display-current-value seven-segment">---%</span>
+            </div>
         </div>
 
-        <!-- Sollwerte + Hysterese -->
+        <!-- Sollwerte (Hysteresen: Einstellungsseite) -->
         <div class="settings-section">
             <div class="setting-group">
                 <div class="setting-item">
@@ -63,41 +63,6 @@
                         <button class="control-button minus" id="btnHumidityMinus">-</button>
                         <input type="number" id="setHumidity" value="80" min="0" max="100" step="1">
                         <button class="control-button plus" id="btnHumidityPlus">+</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="setting-group-hysteresis">
-                <div class="setting-item">
-                    <label for="temp_hyst_cool">Hyst Kühlen (°C):</label>
-                    <div class="input-with-controls">
-                        <button class="control-button minus" id="btnTempHystCoolMinus">-</button>
-                        <input type="number" id="temp_hyst_cool" value="0.5" min="0.1" max="10.0" step="0.1">
-                        <button class="control-button plus" id="btnTempHystCoolPlus">+</button>
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <label for="hum_hyst_mois">Hyst Befeuchten (%):</label>
-                    <div class="input-with-controls">
-                        <button class="control-button minus" id="btnHumHystMoisMinus">-</button>
-                        <input type="number" id="hum_hyst_mois" value="5.0" min="0.1" max="20.0" step="0.1">
-                        <button class="control-button plus" id="btnHumHystMoisPlus">+</button>
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <label for="temp_hyst_heat">Hyst Heizen (°C):</label>
-                    <div class="input-with-controls">
-                        <button class="control-button minus" id="btnTempHystHeatMinus">-</button>
-                        <input type="number" id="temp_hyst_heat" value="1.0" min="0.1" max="10.0" step="0.1">
-                        <button class="control-button plus" id="btnTempHystHeatPlus">+</button>
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <label for="hum_hyst_fana">Hyst Belüften (%):</label>
-                    <div class="input-with-controls">
-                        <button class="control-button minus" id="btnHumHystFanAMinus">-</button>
-                        <input type="number" id="hum_hyst_fana" value="2.0" min="0.1" max="20.0" step="0.1">
-                        <button class="control-button plus" id="btnHumHystFanAPlus">+</button>
                     </div>
                 </div>
             </div>

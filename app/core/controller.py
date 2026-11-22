@@ -137,8 +137,10 @@ class ReifpiController:
         elif self._state.mode == MODE_MANUAL:
             pass   # Im Manuell-Modus keine automatische Regelung
         else:
-            # 4. Reifeprogramm prüfen
-            self._programs.check_and_advance(self._state)
+            # 4. Reifeprogramm prüfen — neue Sollwerte sofort speichern,
+            #    sonst setzt reload_config() sie im nächsten Zyklus zurück
+            if self._programs.check_and_advance(self._state):
+                self._state_mgr.persist_config(self._state)
             # 5. Regellogik
             self._regulate()
 

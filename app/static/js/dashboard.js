@@ -3,7 +3,7 @@
  *
  * Kommuniziert ausschließlich mit der neuen REST-API:
  *   GET  /api/status        → Istwerte + Konfiguration
- *   POST /api/targets       → Sollwerte + Hysteresen setzen
+ *   POST /api/targets       → Sollwerte setzen (Hysteresen: Einstellungsseite)
  *   POST /api/mode          → Betriebsmodus setzen
  *   POST /api/power         → Ein/Aus
  *   POST /api/relay/<n>/<on|off>   → Manuelles Schalten (nur Modus 3)
@@ -29,10 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const setTempInput          = document.getElementById('setTemp');
     const setHumInput           = document.getElementById('setHumidity');
-    const hystCoolInput         = document.getElementById('temp_hyst_cool');
-    const hystHeatInput         = document.getElementById('temp_hyst_heat');
-    const hystMoisInput         = document.getElementById('hum_hyst_mois');
-    const hystFanaInput         = document.getElementById('hum_hyst_fana');
 
     const modeSlider            = document.getElementById('modeSlider');
     const modeStatusText        = document.getElementById('modeStatusText');
@@ -74,10 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Alle editierbaren Steuerelemente (werden bei power=off deaktiviert)
     const controllableInputs = [
-        setTempInput, setHumInput, hystCoolInput, hystHeatInput, hystMoisInput, hystFanaInput,
+        setTempInput, setHumInput,
         ...['btnTempMinus','btnTempPlus','btnHumidityMinus','btnHumidityPlus',
-            'btnTempHystCoolMinus','btnTempHystCoolPlus','btnTempHystHeatMinus','btnTempHystHeatPlus',
-            'btnHumHystMoisMinus','btnHumHystMoisPlus','btnHumHystFanAMinus','btnHumHystFanAPlus',
         ].map(id => document.getElementById(id)),
     ];
 
@@ -89,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const AUTO_LOCK_MS   = 10000;
 
     // Input-Felder die beim Fokus nicht überschrieben werden
-    const protectedInputs = new Set([setTempInput, setHumInput, hystCoolInput, hystHeatInput, hystMoisInput, hystFanaInput]);
+    const protectedInputs = new Set([setTempInput, setHumInput]);
 
     // ── Hilfsfunktionen ───────────────────────────────────────────────────────
 
@@ -145,7 +139,14 @@ document.addEventListener('DOMContentLoaded', () => {
         inp.value  = clamp(parseFloat(inp.value) + dir * step, min, max, step);
         setTempDisplay.textContent      = fmt1(setTempInput.value) + '°C';
         setHumidityDisplay.textContent  = fmt1(setHumInput.value)  + '%';
-        sendTargets();
+        scheduleSend();
+    }
+
+    // Mehrere schnelle Tipps bzw. Gedrückthalten → eine Übertragung
+    let sendTimer = null;
+    function scheduleSend() {
+        clearTimeout(sendTimer);
+        sendTimer = setTimeout(() => { sendTimer = null; sendTargets(); }, 600);
     }
 
     // ── API-Aufrufe ───────────────────────────────────────────────────────────
@@ -164,10 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const payload = {
             target_temp:   parseFloat(setTempInput.value),
             target_hum:    parseFloat(setHumInput.value),
-            temp_hyst_cool: parseFloat(hystCoolInput.value),
-            temp_hyst_heat: parseFloat(hystHeatInput.value),
-            hum_hyst_mois:  parseFloat(hystMoisInput.value),
-            hum_hyst_fana:  parseFloat(hystFanaInput.value),
         };
         try {
             const r = await apiPost('/api/targets', payload);
@@ -214,14 +211,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // Istwerte immer aktualisieren
             updateDisplays(st);
 
-            // Sollwerte nur updaten wenn nicht editiert
-            if (!manualMode && !isTyping) {
+            // Sollwerte nur updaten wenn nicht editiert (auch nicht, solange
+            // eine ±-Änderung noch auf die Übertragung wartet)
+            if (!manualMode && !isTyping && !sendTimer) {
                 setTempInput.value  = parseFloat(st.target_temp).toFixed(1);
                 setHumInput.value   = parseFloat(st.target_hum).toFixed(1);
-                hystCoolInput.value = parseFloat(st.temp_hyst_cool).toFixed(1);
-                hystHeatInput.value = parseFloat(st.temp_hyst_heat).toFixed(1);
-                hystMoisInput.value = parseFloat(st.hum_hyst_mois).toFixed(1);
-                hystFanaInput.value = parseFloat(st.hum_hyst_fana).toFixed(1);
             }
 
             // Modus
@@ -292,23 +286,38 @@ document.addEventListener('DOMContentLoaded', () => {
         ['btnTempPlus',          setTempInput,   1],
         ['btnHumidityMinus',     setHumInput,   -1],
         ['btnHumidityPlus',      setHumInput,    1],
-        ['btnTempHystCoolMinus', hystCoolInput, -1],
-        ['btnTempHystCoolPlus',  hystCoolInput,  1],
-        ['btnTempHystHeatMinus', hystHeatInput, -1],
-        ['btnTempHystHeatPlus',  hystHeatInput,  1],
-        ['btnHumHystMoisMinus',  hystMoisInput, -1],
-        ['btnHumHystMoisPlus',   hystMoisInput,  1],
-        ['btnHumHystFanAMinus',  hystFanaInput, -1],
-        ['btnHumHystFanAPlus',   hystFanaInput,  1],
     ].forEach(([id, inp, dir]) => {
         const btn = document.getElementById(id);
         if (!btn) return;
-        btn.addEventListener('click', () => adjustInput(inp, dir));
-        btn.addEventListener('touchstart', e => { e.preventDefault(); adjustInput(inp, dir); });
+        // Wie auf der Einstellungsseite: Ein Schritt erst beim vollständigen
+        // Tippen (click), damit Scrollen über eine Taste nichts verstellt.
+        // Gedrückt halten (≥ 500 ms ohne Bewegung) zählt schnell weiter.
+        let delay = null, repeat = null, held = false, startX = 0, startY = 0;
+        const stop = () => { clearTimeout(delay); clearInterval(repeat); delay = repeat = null; };
+        btn.addEventListener('pointerdown', e => {
+            if (e.button !== 0) return;
+            held   = false;
+            startX = e.clientX;
+            startY = e.clientY;
+            delay  = setTimeout(() => {
+                held = true;
+                adjustInput(inp, dir);
+                repeat = setInterval(() => adjustInput(inp, dir), 120);
+            }, 500);
+        });
+        btn.addEventListener('pointermove', e => {
+            if (delay && Math.hypot(e.clientX - startX, e.clientY - startY) > 8) stop();
+        });
+        ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => btn.addEventListener(ev, stop));
+        btn.addEventListener('click', () => {
+            if (held) { held = false; return; }   // Halten hat schon gezählt
+            adjustInput(inp, dir);
+        });
+        btn.addEventListener('contextmenu', e => e.preventDefault());
     });
 
     // Input change → send
-    [setTempInput, setHumInput, hystCoolInput, hystHeatInput, hystMoisInput, hystFanaInput].forEach(inp => {
+    [setTempInput, setHumInput].forEach(inp => {
         inp.addEventListener('change', sendTargets);
         inp.addEventListener('keydown', e => { if (e.key === 'Enter') sendTargets(); });
     });

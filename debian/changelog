@@ -1,3 +1,28 @@
+reifpi (0.1.6) unstable; urgency=medium
+
+  * Einstellungsseite neu, mobile first: Reiter Regelung/Melden/Hardware/
+    System, Karten pro Gerät, große −/+-Tasten (gedrückt halten
+    wiederholt), feste Speichern-Leiste mit Zähler ungespeicherter
+    Änderungen; gespeichert werden nur geänderte Felder.
+  * Sollwerte nur noch im Dashboard, nicht mehr in den Einstellungen.
+  * −/+-Tasten zählen erst beim vollständigen Tippen; Scrollen über
+    eine Taste verstellt nichts mehr. Gedrückt halten ab 0,5 s.
+  * Knopf "Verwerfen" in der Speichern-Leiste.
+  * Dashboard: ±-Tasten wie in den Einstellungen (Scrollen verstellt
+    nichts, Halten zählt weiter); schnelle Tipps werden gebündelt
+    als eine Änderung an den Pi geschickt.
+  * Einheitlicher Seitenkopf mit Link "← Dashboard" auf allen Unterseiten
+    (Einstellungen, Programme, Archiv, Hardware-Setup); Unterseiten
+    beginnen oben statt vertikal zentriert.
+  * Fix: Nach einem Neustart wurde ein laufendes Reifeprogramm beim
+    letzten statt beim aktuellen Schritt fortgesetzt.
+  * Fix: Sollwerte eines neuen Programmschritts wurden nicht gespeichert
+    und im nächsten Regelzyklus wieder überschrieben.
+  * Dashboard: Hysterese-Felder entfernt (nur noch Sollwerte), im
+    Außenband steht die absolute Feuchte in der Mitte.
+
+ -- Jürgen Auerbach <J.Auerbach@b50.de>  Sun, 22 Nov 2026 18:40:00 +0100
+
 reifpi (0.1.5) unstable; urgency=medium
 
   * Neu: Nachlauf-Kompensation für Heizen, Kühlen und Befeuchten —

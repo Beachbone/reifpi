@@ -162,23 +162,6 @@ canvas {
 }
 
 /* Back Button */
-.back-button {
-    display: block;
-    width: fit-content;
-    margin: 20px auto;
-    padding: 10px 20px;
-    background-color: #00bcd4;
-    color: white;
-    text-decoration: none;
-    border-radius: 8px;
-    transition: background-color 0.8s ease;
-    font-size: 1.1em;
-}
-
-.back-button:hover {
-    background-color: #0097a7;
-}
-
 /* Custom Chart Legend */
 .chart-legend {
     display: flex;

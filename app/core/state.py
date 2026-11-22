@@ -234,9 +234,11 @@ class StateManager:
         Setzt den Kompressor-Last-Off auf jetzt (Schutzzeit nach Neustart).
 
         Strategie:
-        - Wenn der letzte Schritt in riping_archive noch nicht beendet ist
-          (time_step_ended IS NULL) und das geplante Ende noch in der Zukunft
-          liegt → Schritt fortsetzen.
+        - Beim Programmstart werden alle Schritte vorab mit geplanten Zeiten
+          angelegt. Laufend ist der offene Eintrag, der zuletzt begonnen hat
+          (start_time ≤ jetzt) — nicht der mit der höchsten ID, das wäre
+          der letzte, noch zukünftige Schritt.
+        - Liegt dessen geplantes Ende noch in der Zukunft → Schritt fortsetzen.
         - Bei langem Ausfall (end_time bereits überschritten) → Schritt als
           abgelaufen markieren, ProgramRunner entscheidet ob nächster Schritt.
         """
@@ -253,9 +255,11 @@ class StateManager:
             FROM   riping_archive ra
             JOIN   riping_pgms    rp ON rp.id = ra.riping_pgm
             WHERE  ra.time_step_ended IS NULL
-            ORDER  BY ra.id DESC
+              AND  ra.start_time <= ?
+            ORDER  BY ra.start_time DESC, ra.id DESC
             LIMIT  1
-            """
+            """,
+            (time.time(),),
         )
         if not row:
             logger.info("Kein laufendes Reifeprogramm gefunden.")
