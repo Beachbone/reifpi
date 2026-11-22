@@ -41,6 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
         cfgMinOffMois:        'min_off_secs_mois',
         cfgLockHeatAfterCool: 'lock_secs_heat_after_cool',
         cfgLockCoolAfterHeat: 'lock_secs_cool_after_heat',
+        cfgMoisDryCheck:      'mois_dry_check_min',
+        cfgMoisDryRise:       'mois_dry_min_rise',
         cfgAirInterval:       'air_interval_h',
         cfgAirDuration:       'air_duration_min',
         cfgAirShort:          'air_short_pct',

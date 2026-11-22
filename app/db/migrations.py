@@ -13,7 +13,7 @@ from app.db.schema import ALL_TABLES
 
 logger = logging.getLogger(__name__)
 
-CURRENT_SCHEMA_VERSION = 8
+CURRENT_SCHEMA_VERSION = 9
 
 # Spalten der Nachlauf-Kompensation (v7) — alle mit Default 0 = aus
 _V7_COLUMNS = (
@@ -38,6 +38,13 @@ _V8_COLUMNS = (
     ("air_abort_temp_k",  "REAL",    "2.0"),
     ("air_abort_hum_pct", "REAL",    "10.0"),
     ("air_last_exchange", "REAL",    "0"),
+)
+
+# Spalten des Trockenlauf-Schutzes (v9): (Name, Typ, Default)
+_V9_COLUMNS = (
+    ("mois_dry_check_min", "INTEGER", "15"),
+    ("mois_dry_min_rise",  "REAL",    "1.0"),
+    ("mois_fault_since",   "REAL",    "0"),
 )
 
 
@@ -82,6 +89,9 @@ def apply_migrations(db: Database, default_config: dict) -> None:
         if current_version < 8:
             _migrate_v7_to_v8(db)
             _set_schema_version(db, 8)
+        if current_version < 9:
+            _migrate_v8_to_v9(db)
+            _set_schema_version(db, 9)
         logger.info("Migration abgeschlossen.")
 
     logger.info(f"Datenbankschema Version {CURRENT_SCHEMA_VERSION} — OK.")
@@ -196,6 +206,16 @@ def _migrate_v7_to_v8(db: Database) -> None:
             logger.info(f"Migration v8: {col} Spalte hinzugefügt.")
         except Exception as e:
             logger.warning(f"Migration v8 ({col}) übersprungen: {e}")
+
+
+def _migrate_v8_to_v9(db: Database) -> None:
+    """v8 → v9: Trockenlauf-Schutz für den Befeuchter."""
+    for col, sql_type, default in _V9_COLUMNS:
+        try:
+            db.execute(f"ALTER TABLE config ADD COLUMN {col} {sql_type} NOT NULL DEFAULT {default}")
+            logger.info(f"Migration v9: {col} Spalte hinzugefügt.")
+        except Exception as e:
+            logger.warning(f"Migration v9 ({col}) übersprungen: {e}")
 
 
 def _init_config(db: Database, defaults: dict) -> None:

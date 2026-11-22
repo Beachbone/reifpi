@@ -1,3 +1,18 @@
+reifpi (0.1.8) unstable; urgency=medium
+
+  * Neu: Trockenlauf-Schutz für den Befeuchter. Läuft er
+    mois_dry_check_min Minuten am Stück, ohne dass die Feuchte (ab ihrem
+    Tiefstwert) um mois_dry_min_rise steigt, wird er gesperrt und eine
+    Meldung verschickt. Die Sperre übersteht Neustarts und wird im
+    Dashboard aufgehoben ("Befeuchter freigeben"). Schema v9.
+  * Fix: Die Regelung verschickte nie Benachrichtigungen — der Notifier
+    wurde beim Start nicht übergeben. Neuer zentraler Melder schickt über
+    ntfy und E-Mail (Mindestabstand), liest die Einstellungen beim
+    Versand und blockiert den Regelzyklus nicht. Damit kommt auch die
+    Safe-Mode-Meldung jetzt an.
+
+ -- Jürgen Auerbach <J.Auerbach@b50.de>  Sun, 22 Nov 2026 21:00:00 +0100
+
 reifpi (0.1.7) unstable; urgency=medium
 
   * Neu: Geplanter Luftwechsel. Alle air_interval_h Stunden läuft für

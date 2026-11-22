@@ -98,6 +98,15 @@
                         <label for="cfgMinOffMois">Mindestpause <span class="sp-unit">s</span></label>
                         <input type="number" id="cfgMinOffMois" data-stepper inputmode="numeric" step="10" min="0" max="3600">
                     </div>
+                    <p class="sp-rule">Trockenlauf-Schutz: Läuft der Befeuchter so lange am Stück, ohne dass die Feuchte um den Mindestanstieg steigt, wird er gesperrt und gemeldet (Wassertank leer?). Prüfzeit 0 = aus.</p>
+                    <div class="sp-field">
+                        <label for="cfgMoisDryCheck">Trockenlauf-Prüfzeit <span class="sp-unit">min</span></label>
+                        <input type="number" id="cfgMoisDryCheck" data-stepper inputmode="numeric" step="1" min="0" max="240">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgMoisDryRise">Mindestanstieg <span class="sp-unit">%rF</span></label>
+                        <input type="number" id="cfgMoisDryRise" data-stepper inputmode="decimal" step="0.5" min="0.5" max="20">
+                    </div>
                 </section>
 
                 <section class="sp-card" aria-labelledby="h-fana">

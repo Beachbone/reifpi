@@ -24,7 +24,7 @@ from app.db.archive_writer import ArchiveWriter
 from app.utils.physics import outside_is_wetter, outside_is_drier
 
 if TYPE_CHECKING:
-    from app.notifications.email_notifier import EmailNotifier
+    from app.notifications.dispatcher import NotificationDispatcher
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class ReifpiController:
         gpio:           GpioManager,
         archive_writer: ArchiveWriter,
         program_runner: ProgramRunner,
-        notifier:       "EmailNotifier | None" = None,
+        notifier:       "NotificationDispatcher | None" = None,
         sensor_fail_threshold: int = 3,
         compressor_protect_secs: int = 300,
         rate_window_secs: int = 90,
@@ -148,11 +148,14 @@ class ReifpiController:
                 self._state_mgr.persist_config(self._state)
             # 5. Regeln; ein laufender Luftwechsel erzwingt danach
             #    Frischluft + Umluft, die Regelung gleicht weiter aus
-            air = self._update_air_exchange(time.time())
+            now = time.time()
+            air = self._update_air_exchange(now)
             self._regulate()
             if air == ACTIVE:
                 self._state.relay_fana = True
                 self._state.relay_fanu = True
+            # 6. Trockenlauf-Schutz: Befeuchter an, Feuchte steigt nicht?
+            self._check_humidifier(now)
 
         # 6. GPIO-Ausgänge setzen
         self._gpio.apply_state(self._state)
@@ -195,6 +198,75 @@ class ReifpiController:
         # Waage (optional)
         if reading.weight is not None:
             self._state.weight = reading.weight
+
+    # ── Trockenlauf-Schutz Befeuchter ─────────────────────────────────────────
+
+    def _check_humidifier(self, now: float) -> None:
+        """
+        Läuft der Befeuchter ununterbrochen mois_dry_check_min Minuten, ohne
+        dass die Feuchte (ab ihrem Tiefstwert in dieser Zeit) um mindestens
+        mois_dry_min_rise steigt, ist vermutlich der Wassertank leer:
+        Befeuchter sperren und melden. Der Tiefstwert als Bezug verhindert
+        Fehlalarme, wenn z.B. der Kompressor anfangs noch kräftig trocknet.
+        """
+        s = self._state
+        if (s.mois_dry_check_min <= 0 or s.mois_fault
+                or not s.relay_mois or s.hum_intern is None):
+            s.mois_on_since   = None
+            s.mois_on_min_hum = None
+            return
+
+        if s.mois_on_since is None:
+            s.mois_on_since   = now
+            s.mois_on_min_hum = s.hum_intern
+            return
+        s.mois_on_min_hum = min(s.mois_on_min_hum, s.hum_intern)
+
+        if now - s.mois_on_since < s.mois_dry_check_min * 60:
+            return
+        rise = s.hum_intern - s.mois_on_min_hum
+        if rise >= s.mois_dry_min_rise:
+            return
+
+        de = lambda v: f"{v:.1f}".replace(".", ",")
+        reason = (
+            f"Befeuchter lief {s.mois_dry_check_min} min, die Luftfeuchte stieg "
+            f"nur um {de(rise)} %rF ({de(s.mois_on_min_hum)} → {de(s.hum_intern)} %)"
+        )
+        logger.error(f"Trockenlauf-Schutz: {reason}")
+        s.mois_fault        = True
+        s.mois_fault_since  = now
+        s.mois_fault_reason = reason
+        s.mois_on_since     = None
+        s.mois_on_min_hum   = None
+        s.relay_mois        = False
+        s.mois_last_off     = now
+        self._state_mgr.persist_runtime(mois_fault_since=now)
+        if self._notifier:
+            self._notifier.send(
+                subject="Befeuchter abgeschaltet",
+                body=(
+                    f"{reason}.\n\n"
+                    "Vermutlich ist der Wassertank leer. Der Befeuchter bleibt zum "
+                    "Schutz des Verneblers aus, bis er im Dashboard wieder "
+                    "freigegeben wird."
+                ),
+                priority="high",
+                tags=["droplet", "warning"],
+            )
+
+    def reset_humidifier_fault(self) -> None:
+        """Gibt den Befeuchter nach dem Nachfüllen wieder frei (API)."""
+        with self._lock:
+            s = self._state
+            s.mois_fault        = False
+            s.mois_fault_since  = 0.0
+            s.mois_fault_reason = ""
+            s.mois_on_since     = None
+            s.mois_on_min_hum   = None
+            self._state_mgr.persist_runtime(mois_fault_since=0)
+            self._state_mgr.write_state_file(s)
+            logger.info("Befeuchter wieder freigegeben.")
 
     # ── Geplanter Luftwechsel ─────────────────────────────────────────────────
 
@@ -338,7 +410,10 @@ class ReifpiController:
         mois_on_at  = target - s.hum_hyst_mois
         mois_off_at = target - min(s.hum_offset_mois, s.hum_hyst_mois)
 
-        if hum < mois_on_at:
+        if s.mois_fault:
+            # Trockenlauf erkannt: gesperrt bis zur Freigabe im Dashboard
+            s.relay_mois = False
+        elif hum < mois_on_at:
             if s.relay_mois:
                 pass
             elif s.min_off_secs_mois and time.time() - s.mois_last_off < s.min_off_secs_mois:
@@ -439,7 +514,7 @@ class ReifpiController:
         if self._notifier:
             try:
                 self._notifier.send(
-                    subject="Reifeschrank: Safe-Mode aktiviert",
+                    subject="Safe-Mode aktiviert",
                     body=(
                         f"Der Reifeschrank ist in den Safe-Mode gewechselt.\n"
                         f"Grund: {reason}\n\n"

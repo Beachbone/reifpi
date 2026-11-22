@@ -10,6 +10,7 @@
  *   GET  /api/programs/running     → Laufendes Programm
  *   POST /api/programs/stop        → Programm stoppen
  *   POST /api/safe_mode/reset      → Safe-Mode zurücksetzen
+ *   POST /api/humidifier/reset     → Befeuchter nach Trockenlauf freigeben
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -51,6 +52,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const safeModeBanner        = document.getElementById('safe-mode-banner');
     const safeModeReason        = document.getElementById('safeModeReason');
     const btnResetSafeMode      = document.getElementById('btnResetSafeMode');
+    const moisFaultBanner       = document.getElementById('mois-fault-banner');
+    const moisFaultReason       = document.getElementById('moisFaultReason');
+    const btnResetMoisFault     = document.getElementById('btnResetMoisFault');
 
     // Relais: { relay-name: { led, pic, checkbox } }
     const relays = {
@@ -252,6 +256,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 safeModeBanner.style.display = 'none';
             }
 
+            // Trockenlauf-Sperre Befeuchter
+            if (st.mois_fault) {
+                moisFaultBanner.style.display = '';
+                const since = st.mois_fault_since
+                    ? ' (seit ' + new Date(st.mois_fault_since * 1000).toLocaleString('de-DE') + ')' : '';
+                moisFaultReason.textContent = (st.mois_fault_reason || 'Trockenlauf erkannt') + since;
+            } else {
+                moisFaultBanner.style.display = 'none';
+            }
+
             // Laufendes Programm
             if (st.active_program_id) {
                 runningProgramName.textContent = st.active_program_name || '';
@@ -413,6 +427,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const r = await fetch('/api/safe_mode/reset', { method: 'POST' });
             const j = await r.json();
             if (j.ok) { showMsg('Safe-Mode zurückgesetzt.', 'success'); fetchStatus(); }
+            else       showMsg('Fehler: ' + (j.error || ''), 'error', 5000);
+        } catch (e) {
+            showMsg('Verbindungsfehler.', 'error', 5000);
+        }
+    });
+
+    btnResetMoisFault.addEventListener('click', async () => {
+        try {
+            const r = await fetch('/api/humidifier/reset', { method: 'POST' });
+            const j = await r.json();
+            if (j.ok) { showMsg('Befeuchter freigegeben.', 'success'); fetchStatus(); }
             else       showMsg('Fehler: ' + (j.error || ''), 'error', 5000);
         } catch (e) {
             showMsg('Verbindungsfehler.', 'error', 5000);

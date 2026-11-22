@@ -65,6 +65,14 @@ CREATE TABLE IF NOT EXISTS config (
     air_last_exchange       REAL    NOT NULL DEFAULT 0,
     -- Laufzeitwert: letzter erfolgreicher Luftwechsel (Unix-Zeit)
 
+    -- Trockenlauf-Schutz Befeuchter (mois_dry_check_min = 0: aus)
+    mois_dry_check_min      INTEGER NOT NULL DEFAULT 15,
+    -- so lange ununterbrochen an ...
+    mois_dry_min_rise       REAL    NOT NULL DEFAULT 1.0,
+    -- ... und weniger Anstieg [%rF] → Befeuchter sperren + melden
+    mois_fault_since        REAL    NOT NULL DEFAULT 0,
+    -- Laufzeitwert: Sperre seit (Unix-Zeit), 0 = frei
+
     -- Steuerung
     refreshrate             INTEGER NOT NULL DEFAULT 30,
     -- Regelzyklus in Sekunden

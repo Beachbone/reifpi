@@ -44,6 +44,9 @@ AIR_FIELDS: tuple[tuple[str, type], ...] = (
     ("air_short_pct",             int),
     ("air_abort_temp_k",          float),
     ("air_abort_hum_pct",         float),
+    # Trockenlauf-Schutz Befeuchter
+    ("mois_dry_check_min",        int),
+    ("mois_dry_min_rise",         float),
 )
 
 
@@ -84,6 +87,10 @@ class SystemState:
     air_short_pct:             int   = 50
     air_abort_temp_k:          float = 2.0
     air_abort_hum_pct:         float = 10.0
+
+    # ── Trockenlauf-Schutz Befeuchter (mois_dry_check_min = 0: aus) ─────────
+    mois_dry_check_min:        int   = 15
+    mois_dry_min_rise:         float = 1.0
 
     # ── GPIO-Pins (aus Config, Neustart erforderlich bei Änderung) ───────────
     gpio_pin_fanu:          int   = 27
@@ -135,6 +142,13 @@ class SystemState:
     air_start_hum:          float | None = None
     air_next_due:           float | None = None
     air_last_result:        str   = ""
+
+    # ── Trockenlauf-Schutz (Laufzeit) ────────────────────────────────────────
+    mois_fault:             bool  = False        # Befeuchter gesperrt
+    mois_fault_since:       float = 0.0          # aus DB, übersteht Neustarts
+    mois_fault_reason:      str   = ""
+    mois_on_since:          float | None = None  # ununterbrochen an seit
+    mois_on_min_hum:        float | None = None  # tiefste Feuchte seitdem
 
     # ── Safe-Mode ─────────────────────────────────────────────────────────────
     safe_mode:              bool  = False
@@ -213,6 +227,10 @@ class StateManager:
         for attr, cast in COMPENSATION_FIELDS + AIR_FIELDS:
             setattr(state, attr, cast(row[attr]))
         state.air_last_exchange = float(row["air_last_exchange"])
+        state.mois_fault_since  = float(row["mois_fault_since"])
+        if state.mois_fault_since:
+            state.mois_fault        = True
+            state.mois_fault_reason = "Trockenlauf erkannt (vor dem Neustart)"
         logger.info(
             f"State aus DB geladen — Soll: {state.target_temp}°C / "
             f"{state.target_hum}%rF, Modus: {state.mode}"
@@ -384,6 +402,15 @@ class StateManager:
                 **{attr: getattr(state, attr) for attr, _ in COMPENSATION_FIELDS + AIR_FIELDS},
             },
         )
+
+    def persist_runtime(self, **values: float) -> None:
+        """Schreibt Laufzeitwerte, die einen Neustart überstehen sollen."""
+        allowed = {"mois_fault_since", "air_last_exchange"}
+        cols = {k: v for k, v in values.items() if k in allowed}
+        if not cols:
+            return
+        set_clause = ", ".join(f"{k} = :{k}" for k in cols)
+        self._db.execute(f"UPDATE config SET {set_clause} WHERE id = 1", cols)
 
     def _ensure_state_dir(self) -> None:
         """Erstellt das Verzeichnis für die State-Datei falls nötig."""

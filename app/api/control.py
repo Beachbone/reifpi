@@ -116,6 +116,13 @@ def reset_safe_mode():
     return jsonify({"ok": True})
 
 
+@bp.post("/api/humidifier/reset")
+def reset_humidifier():
+    """Gibt den Befeuchter nach Trockenlauf-Sperre wieder frei."""
+    current_app.controller.reset_humidifier_fault()
+    return jsonify({"ok": True})
+
+
 @bp.post("/api/system/shutdown")
 def system_shutdown():
     """Fährt den Raspberry Pi sauber herunter."""

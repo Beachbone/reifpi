@@ -286,7 +286,7 @@ def test_migration_v7_to_v8():
     assert v8 <= cols, v8 - cols
     row = db.fetchone("SELECT * FROM config")
     assert row["air_interval_h"] == 0 and row["air_duration_min"] == 5
-    assert db.fetchscalar("SELECT MAX(version) FROM schema_version") == CURRENT_SCHEMA_VERSION == 8
+    assert db.fetchscalar("SELECT MAX(version) FROM schema_version") == CURRENT_SCHEMA_VERSION >= 8
     print("  6 Spalten ergänzt, Luftwechsel aus ✓")
     db.close()
 
