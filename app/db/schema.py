@@ -34,6 +34,26 @@ CREATE TABLE IF NOT EXISTS config (
     aht21_hyst_protect      REAL    NOT NULL DEFAULT 2.0,
     -- %rF über Soll: Schutzfunktion greift ab dieser Abweichung
 
+    -- Nachlauf-Kompensation (0 = aus, Verhalten wie ohne Kompensation)
+    temp_offset_cool        REAL    NOT NULL DEFAULT 0,
+    -- K: Kühlung schaltet schon bei Soll + Offset ab
+    temp_offset_heat        REAL    NOT NULL DEFAULT 0,
+    -- K: Heizung schaltet schon bei Soll - Offset ab
+    hum_offset_mois         REAL    NOT NULL DEFAULT 0,
+    -- %rF: Befeuchter schaltet schon bei Soll - Offset ab
+    lead_secs_cool          INTEGER NOT NULL DEFAULT 0,
+    lead_secs_heat          INTEGER NOT NULL DEFAULT 0,
+    lead_secs_mois          INTEGER NOT NULL DEFAULT 0,
+    -- s: Abschaltung, sobald Ist + Steigung × Vorhaltzeit den Abschaltpunkt erreicht
+    min_off_secs_cool       INTEGER NOT NULL DEFAULT 0,
+    min_off_secs_heat       INTEGER NOT NULL DEFAULT 0,
+    min_off_secs_mois       INTEGER NOT NULL DEFAULT 0,
+    -- s: Mindestpause vor dem Wiedereinschalten (Kühlung: mind. Kompressor-Schutzzeit)
+    lock_secs_heat_after_cool INTEGER NOT NULL DEFAULT 0,
+    -- s: Heizung gesperrt nach Abschalten der Kühlung
+    lock_secs_cool_after_heat INTEGER NOT NULL DEFAULT 0,
+    -- s: Kühlung gesperrt nach Abschalten der Heizung
+
     -- Steuerung
     refreshrate             INTEGER NOT NULL DEFAULT 30,
     -- Regelzyklus in Sekunden

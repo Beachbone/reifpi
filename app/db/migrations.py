@@ -13,7 +13,22 @@ from app.db.schema import ALL_TABLES
 
 logger = logging.getLogger(__name__)
 
-CURRENT_SCHEMA_VERSION = 6
+CURRENT_SCHEMA_VERSION = 7
+
+# Spalten der Nachlauf-Kompensation (v7) — alle mit Default 0 = aus
+_V7_COLUMNS = (
+    ("temp_offset_cool",          "REAL"),
+    ("temp_offset_heat",          "REAL"),
+    ("hum_offset_mois",           "REAL"),
+    ("lead_secs_cool",            "INTEGER"),
+    ("lead_secs_heat",            "INTEGER"),
+    ("lead_secs_mois",            "INTEGER"),
+    ("min_off_secs_cool",         "INTEGER"),
+    ("min_off_secs_heat",         "INTEGER"),
+    ("min_off_secs_mois",         "INTEGER"),
+    ("lock_secs_heat_after_cool", "INTEGER"),
+    ("lock_secs_cool_after_heat", "INTEGER"),
+)
 
 
 def apply_migrations(db: Database, default_config: dict) -> None:
@@ -51,6 +66,9 @@ def apply_migrations(db: Database, default_config: dict) -> None:
         if current_version < 6:
             _migrate_v5_to_v6(db)
             _set_schema_version(db, 6)
+        if current_version < 7:
+            _migrate_v6_to_v7(db)
+            _set_schema_version(db, 7)
         logger.info("Migration abgeschlossen.")
 
     logger.info(f"Datenbankschema Version {CURRENT_SCHEMA_VERSION} — OK.")
@@ -145,6 +163,16 @@ def _migrate_v5_to_v6(db: Database) -> None:
         logger.info("Migration v6: relay_active_high Spalte hinzugefügt.")
     except Exception as e:
         logger.warning(f"Migration v6 übersprungen: {e}")
+
+
+def _migrate_v6_to_v7(db: Database) -> None:
+    """v6 → v7: Parameter der Nachlauf-Kompensation (Offset, Vorhalt, Mindestpause, Sperre)."""
+    for col, sql_type in _V7_COLUMNS:
+        try:
+            db.execute(f"ALTER TABLE config ADD COLUMN {col} {sql_type} NOT NULL DEFAULT 0")
+            logger.info(f"Migration v7: {col} Spalte hinzugefügt.")
+        except Exception as e:
+            logger.warning(f"Migration v7 ({col}) übersprungen: {e}")
 
 
 def _init_config(db: Database, defaults: dict) -> None:

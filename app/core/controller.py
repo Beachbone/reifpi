@@ -12,6 +12,7 @@ pro Regelzyklus mehr.
 import logging
 import threading
 import time
+from collections import deque
 from typing import TYPE_CHECKING
 
 from app.core.state import SystemState, StateManager
@@ -52,6 +53,7 @@ class ReifpiController:
         notifier:       "EmailNotifier | None" = None,
         sensor_fail_threshold: int = 3,
         compressor_protect_secs: int = 300,
+        rate_window_secs: int = 90,
     ) -> None:
         self._state          = state
         self._state_mgr      = state_manager
@@ -62,6 +64,9 @@ class ReifpiController:
         self._notifier       = notifier
         self._fail_threshold = sensor_fail_threshold
         self._comp_protect   = compressor_protect_secs
+        self._rate_window    = rate_window_secs
+        # Messverlauf Innensensor für die Steigung: (timestamp, temp, hum)
+        self._history: deque[tuple[float, float, float]] = deque()
 
         self._running  = False
         self._thread:  threading.Thread | None = None
@@ -158,6 +163,7 @@ class ReifpiController:
             self._state.hum_intern     = reading.hum_intern
             self._state.abs_hum_intern = reading.abs_hum_intern
             self._state.sensor_fail_count = 0
+            self._update_rates(time.time(), reading.temp_intern, reading.hum_intern)
         else:
             self._state.sensor_fail_count += 1
             logger.warning(
@@ -189,70 +195,100 @@ class ReifpiController:
 
         if self._state.mode == MODE_AUTO:
             self._regulate_humidity()
+        else:
+            # Nur Temperatur: Feuchte-Aktoren aus, Umluft nur mit Heizen/Kühlen
+            if self._state.relay_mois:
+                self._state.mois_last_off = time.time()
+            self._state.relay_mois = False
+            self._state.relay_fana = False
+            self._state.relay_fanu = self._state.relay_cool or self._state.relay_heat
 
     def _regulate_temperature(self) -> None:
         """
-        Hysterese-Regelung für Temperatur.
+        Hysterese-Regelung für Temperatur mit Nachlauf-Kompensation.
 
         Kühlung (COOL):
-            Temp > Soll + temp_hyst_cool → AN
-            Temp < Soll                  → AUS
+            Temp > Soll + temp_hyst_cool                       → AN
+            Prognose ≤ Soll + temp_offset_cool                 → AUS
 
         Heizung (HEAT):
-            Temp < Soll - temp_hyst_heat → AN
-            Temp > Soll                  → AUS
+            Temp < Soll - temp_hyst_heat                       → AN
+            Prognose ≥ Soll - temp_offset_heat                 → AUS
 
-        Kompressor-Schutzzeit: Kühlung darf nicht starten wenn
-        < compressor_protect_secs seit dem letzten Ausschalten.
+        Prognose = Temp + Steigung × lead_secs (nur in Wirkrichtung des
+        Aktors). Mit Offset und Vorhaltzeit 0 schaltet der Aktor wie bisher
+        genau beim Soll ab. Der Offset wird auf die Hysterese begrenzt.
+
+        Einschaltsperren:
+            Kühlung: Kompressor-Schutzzeit bzw. min_off_secs_cool (das
+                     Größere) und lock_secs_cool_after_heat nach Heizende.
+            Heizung: min_off_secs_heat und lock_secs_heat_after_cool
+                     nach Kühlende.
         """
-        temp   = self._state.temp_intern
-        target = self._state.target_temp
+        s      = self._state
+        temp   = s.temp_intern
+        target = s.target_temp
+        now    = time.time()
 
         # ── Kühlung ──
-        if temp > target + self._state.temp_hyst_cool:
-            if self._can_start_compressor():
-                if not self._state.relay_cool:
-                    logger.info(
-                        f"Kühlung AN: {temp}°C > {target + self._state.temp_hyst_cool}°C"
-                    )
-                self._state.relay_cool        = True
-                self._state.relay_heat        = False
-                self._state.compressor_protected = False
-            else:
-                self._state.compressor_protected = True
+        cool_on_at  = target + s.temp_hyst_cool
+        cool_off_at = target + min(s.temp_offset_cool, s.temp_hyst_cool)
+
+        if temp > cool_on_at:
+            if s.relay_cool:
+                s.compressor_protected = False
+            elif not self._can_start_compressor():
+                s.compressor_protected = True
                 logger.debug(
                     f"Kühlung gesperrt (Schutzzeit läuft noch "
-                    f"{int(self._comp_protect - (time.time() - self._state.compressor_last_off))}s)"
+                    f"{int(self._compressor_wait_secs() - (now - s.compressor_last_off))}s)"
                 )
+            elif s.lock_secs_cool_after_heat and now - s.heat_last_off < s.lock_secs_cool_after_heat:
+                logger.debug("Kühlung gesperrt (Sperre nach Heizende)")
+            else:
+                logger.info(f"Kühlung AN: {temp}°C > {cool_on_at}°C")
+                s.relay_cool           = True
+                s.compressor_protected = False
+                self._heat_off()
 
-        elif temp <= target:
-            if self._state.relay_cool:
-                logger.info(f"Kühlung AUS: {temp}°C ≤ {target}°C")
-                self._state.compressor_last_off = time.time()
-            self._state.relay_cool           = False
-            self._state.compressor_protected = False
+        elif self._predict(temp, s.temp_rate, s.lead_secs_cool, -1) <= cool_off_at:
+            if s.relay_cool:
+                logger.info(
+                    f"Kühlung AUS: {temp}°C (Prognose ≤ {cool_off_at}°C)"
+                )
+            self._cool_off()
+            s.compressor_protected = False
 
         # ── Heizung ──
-        if temp < target - self._state.temp_hyst_heat:
-            if not self._state.relay_heat:
-                logger.info(
-                    f"Heizung AN: {temp}°C < {target - self._state.temp_hyst_heat}°C"
-                )
-            self._state.relay_heat = True
-            self._state.relay_cool = False   # Kühlung und Heizung nie gleichzeitig
+        heat_on_at  = target - s.temp_hyst_heat
+        heat_off_at = target - min(s.temp_offset_heat, s.temp_hyst_heat)
 
-        elif temp >= target:
-            if self._state.relay_heat:
-                logger.info(f"Heizung AUS: {temp}°C ≥ {target}°C")
-            self._state.relay_heat = False
+        if temp < heat_on_at:
+            if s.relay_heat:
+                pass
+            elif s.min_off_secs_heat and now - s.heat_last_off < s.min_off_secs_heat:
+                logger.debug("Heizung gesperrt (Mindestpause)")
+            elif s.lock_secs_heat_after_cool and now - s.cool_last_off < s.lock_secs_heat_after_cool:
+                logger.debug("Heizung gesperrt (Sperre nach Kühlende)")
+            else:
+                logger.info(f"Heizung AN: {temp}°C < {heat_on_at}°C")
+                s.relay_heat = True
+                self._cool_off()   # Kühlung und Heizung nie gleichzeitig
+
+        elif self._predict(temp, s.temp_rate, s.lead_secs_heat, +1) >= heat_off_at:
+            if s.relay_heat:
+                logger.info(
+                    f"Heizung AUS: {temp}°C (Prognose ≥ {heat_off_at}°C)"
+                )
+            self._heat_off()
 
     def _regulate_humidity(self) -> None:
         """
         Hysterese-Regelung für Luftfeuchtigkeit mit AHT21-Außensensor-Logik.
 
         Befeuchter (MOIS):
-            Hum < Soll - hum_hyst_mois → AN
-            Hum > Soll                 → AUS
+            Hum < Soll - hum_hyst_mois           → AN (nach min_off_secs_mois)
+            Prognose ≥ Soll - hum_offset_mois    → AUS
 
         Frischluft (FANA) — Basis:
             Hum > Soll + hum_hyst_fana → AN (Entfeuchten)
@@ -268,18 +304,27 @@ class ReifpiController:
         hum    = self._state.hum_intern
         target = self._state.target_hum
 
-        # ── Befeuchter ──
-        if hum < target - self._state.hum_hyst_mois:
-            if not self._state.relay_mois:
-                logger.info(
-                    f"Befeuchter AN: {hum}%rF < {target - self._state.hum_hyst_mois}%rF"
-                )
-            self._state.relay_mois = True
+        # ── Befeuchter (mit Nachlauf-Kompensation wie Heizung) ──
+        s           = self._state
+        mois_on_at  = target - s.hum_hyst_mois
+        mois_off_at = target - min(s.hum_offset_mois, s.hum_hyst_mois)
 
-        elif hum >= target:
-            if self._state.relay_mois:
-                logger.info(f"Befeuchter AUS: {hum}%rF ≥ {target}%rF")
-            self._state.relay_mois = False
+        if hum < mois_on_at:
+            if s.relay_mois:
+                pass
+            elif s.min_off_secs_mois and time.time() - s.mois_last_off < s.min_off_secs_mois:
+                logger.debug("Befeuchter gesperrt (Mindestpause)")
+            else:
+                logger.info(f"Befeuchter AN: {hum}%rF < {mois_on_at}%rF")
+                s.relay_mois = True
+
+        elif self._predict(hum, s.hum_rate, s.lead_secs_mois, +1) >= mois_off_at:
+            if s.relay_mois:
+                logger.info(
+                    f"Befeuchter AUS: {hum}%rF (Prognose ≥ {mois_off_at}%rF)"
+                )
+                s.mois_last_off = time.time()
+            s.relay_mois = False
 
         # ── Frischluft Basis-Logik ──
         if hum > target + self._state.hum_hyst_fana:
@@ -378,8 +423,8 @@ class ReifpiController:
 
     def _all_relays_off(self) -> None:
         """Schaltet alle Relais ab (MODE_MEASURE_ONLY)."""
-        self._state.relay_heat = False
-        self._state.relay_cool = False
+        self._heat_off()
+        self._cool_off()
         self._state.relay_mois = False
         self._state.relay_fana = False
         self._state.relay_fanu = False
@@ -389,8 +434,8 @@ class ReifpiController:
         Setzt alle Relais in den sicheren Zustand:
         Alles AUS außer Umluft (verhindert Schimmelbildung).
         """
-        self._state.relay_heat = False
-        self._state.relay_cool = False
+        self._heat_off()
+        self._cool_off()
         self._state.relay_mois = False
         self._state.relay_fana = False
         self._state.relay_fanu = True   # Umluft bleibt an
@@ -438,10 +483,71 @@ class ReifpiController:
 
     # ── Hilfsfunktionen ───────────────────────────────────────────────────────
 
+    def _compressor_wait_secs(self) -> int:
+        """Wirksame Kompressor-Pause: Schutzzeit oder min_off_secs_cool, das Größere."""
+        return max(self._comp_protect, self._state.min_off_secs_cool)
+
     def _can_start_compressor(self) -> bool:
         """Prüft ob die Kompressor-Schutzzeit abgelaufen ist."""
         elapsed = time.time() - self._state.compressor_last_off
-        return elapsed >= self._comp_protect
+        return elapsed >= self._compressor_wait_secs()
+
+    def _cool_off(self) -> None:
+        """Kühlung aus; merkt den Zeitpunkt nur bei echtem Abschalten."""
+        if self._state.relay_cool:
+            now = time.time()
+            self._state.compressor_last_off = now
+            self._state.cool_last_off       = now
+        self._state.relay_cool = False
+
+    def _heat_off(self) -> None:
+        """Heizung aus; merkt den Zeitpunkt nur bei echtem Abschalten."""
+        if self._state.relay_heat:
+            self._state.heat_last_off = time.time()
+        self._state.relay_heat = False
+
+    @staticmethod
+    def _predict(value: float, rate_per_min: float | None,
+                 lead_secs: int, direction: int) -> float:
+        """
+        Prognostiziert den Messwert nach lead_secs Sekunden.
+
+        Es zählt nur eine Steigung in Wirkrichtung des Aktors
+        (direction +1 = steigend, -1 = fallend) — eine Gegenbewegung
+        darf das Abschalten nicht verzögern.
+        """
+        if not lead_secs or rate_per_min is None:
+            return value
+        rate = max(rate_per_min, 0.0) if direction > 0 else min(rate_per_min, 0.0)
+        return value + rate * lead_secs / 60.0
+
+    def _update_rates(self, now: float, temp: float, hum: float) -> None:
+        """
+        Steigung von Temperatur und Feuchte per linearer Regression über
+        das letzte Zeitfenster. Erst ab 3 Messungen und halbem Fenster
+        gültig, sonst None (Vorhalt dann wirkungslos).
+        """
+        hist = self._history
+        hist.append((now, temp, hum))
+        while hist and now - hist[0][0] > self._rate_window:
+            hist.popleft()
+
+        if len(hist) < 3 or hist[-1][0] - hist[0][0] < self._rate_window / 2:
+            self._state.temp_rate = None
+            self._state.hum_rate  = None
+            return
+
+        n      = len(hist)
+        mean_t = sum(h[0] for h in hist) / n
+        var_t  = sum((h[0] - mean_t) ** 2 for h in hist)
+
+        def slope(idx: int) -> float:
+            mean_v = sum(h[idx] for h in hist) / n
+            cov    = sum((h[0] - mean_t) * (h[idx] - mean_v) for h in hist)
+            return cov / var_t * 60.0   # pro Minute
+
+        self._state.temp_rate = round(slope(1), 3)
+        self._state.hum_rate  = round(slope(2), 3)
 
     @property
     def state(self) -> SystemState:

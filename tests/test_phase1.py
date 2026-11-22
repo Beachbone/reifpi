@@ -41,8 +41,11 @@ def get_default_config(cfg) -> dict:
         "i2c_bus":             cfg.I2C_BUS,
         "sht31_address":       cfg.SHT31_ADDRESS,
         "aht21_address":       cfg.AHT21_ADDRESS,
+        "bme280_address":      cfg.BME280_ADDRESS,
         "sensor_intern":       cfg.SENSOR_INTERN,
+        "sensor_intern_address": cfg.SENSOR_INTERN_ADDRESS,
         "sensor_extern":       cfg.SENSOR_EXTERN,
+        "sensor_extern_address": cfg.SENSOR_EXTERN_ADDRESS,
         "weight_sensor_type":  cfg.WEIGHT_SENSOR_TYPE,
         "weight_sensor_pin_data":  cfg.WEIGHT_SENSOR_PIN_DATA,
         "weight_sensor_pin_clock": cfg.WEIGHT_SENSOR_PIN_CLOCK,
@@ -56,6 +59,8 @@ def get_default_config(cfg) -> dict:
         "ntfy_enabled":        int(cfg.NTFY_ENABLED),
         "ntfy_server":         cfg.NTFY_SERVER,
         "ntfy_topic":          cfg.NTFY_TOPIC,
+        "ntfy_user":           cfg.NTFY_USER,
+        "ntfy_token":          cfg.NTFY_TOKEN,
         "updated_at":          time.time(),
     }
 

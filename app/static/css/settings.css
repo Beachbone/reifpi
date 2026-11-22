@@ -192,6 +192,14 @@
     font-style: italic;
 }
 
+/* Erläuterungstext in einem Panel */
+.settings-hint {
+    color: #ccc;
+    font-size: 0.85em;
+    line-height: 1.4;
+    margin: 5px 0 10px;
+}
+
 /* Hardware-Setup Referenztabelle */
 .hw-ref-table {
     display: flex;

@@ -22,6 +22,21 @@ from app.db.database import Database
 
 logger = logging.getLogger(__name__)
 
+# Parameter der Nachlauf-Kompensation: (Attribut = DB-Spalte, Typ)
+COMPENSATION_FIELDS: tuple[tuple[str, type], ...] = (
+    ("temp_offset_cool",          float),
+    ("temp_offset_heat",          float),
+    ("hum_offset_mois",           float),
+    ("lead_secs_cool",            int),
+    ("lead_secs_heat",            int),
+    ("lead_secs_mois",            int),
+    ("min_off_secs_cool",         int),
+    ("min_off_secs_heat",         int),
+    ("min_off_secs_mois",         int),
+    ("lock_secs_heat_after_cool", int),
+    ("lock_secs_cool_after_heat", int),
+)
+
 
 @dataclass
 class SystemState:
@@ -41,6 +56,19 @@ class SystemState:
     aht21_hyst_protect:     float = 2.0
     refreshrate:            int   = 30
 
+    # ── Nachlauf-Kompensation (0 = aus) ──────────────────────────────────────
+    temp_offset_cool:          float = 0.0   # K vor Soll abschalten
+    temp_offset_heat:          float = 0.0   # K vor Soll abschalten
+    hum_offset_mois:           float = 0.0   # %rF vor Soll abschalten
+    lead_secs_cool:            int   = 0     # Vorhaltzeit für Steigungs-Prognose
+    lead_secs_heat:            int   = 0
+    lead_secs_mois:            int   = 0
+    min_off_secs_cool:         int   = 0     # Mindestpause (Kühlung: ≥ Schutzzeit)
+    min_off_secs_heat:         int   = 0
+    min_off_secs_mois:         int   = 0
+    lock_secs_heat_after_cool: int   = 0     # Heizsperre nach Kühlende
+    lock_secs_cool_after_heat: int   = 0     # Kühlsperre nach Heizende
+
     # ── GPIO-Pins (aus Config, Neustart erforderlich bei Änderung) ───────────
     gpio_pin_fanu:          int   = 27
     gpio_pin_cool:          int   = 23
@@ -58,6 +86,10 @@ class SystemState:
     abs_hum_extern:         float | None = None
     weight:                 float | None = None   # Waage (optional)
 
+    # Steigung des Innensensors (lineare Regression über RATE_WINDOW_SECS)
+    temp_rate:              float | None = None   # K/min
+    hum_rate:               float | None = None   # %rF/min
+
     # ── Relais-Zustände ───────────────────────────────────────────────────────
     relay_heat:             bool = False
     relay_cool:             bool = False
@@ -70,6 +102,12 @@ class SystemState:
     # Unix-Timestamp: wann der Kompressor zuletzt ausgeschaltet wurde
     compressor_protected:   bool  = False
     # True wenn Kompressor gerade wegen Schutzzeit gesperrt ist
+
+    # Letztes tatsächliches Abschalten (für Mindestpause und Sperren).
+    # Anders als compressor_last_off nicht beim Start gesetzt.
+    cool_last_off:          float = 0.0
+    heat_last_off:          float = 0.0
+    mois_last_off:          float = 0.0
 
     # ── Safe-Mode ─────────────────────────────────────────────────────────────
     safe_mode:              bool  = False
@@ -145,6 +183,8 @@ class StateManager:
             gpio_pin_heat       = int(row["gpio_pin_heat"]),
             relay_active_high   = bool(row["relay_active_high"]),
         )
+        for attr, cast in COMPENSATION_FIELDS:
+            setattr(state, attr, cast(row[attr]))
         logger.info(
             f"State aus DB geladen — Soll: {state.target_temp}°C / "
             f"{state.target_hum}%rF, Modus: {state.mode}"
@@ -177,7 +217,7 @@ class StateManager:
             ("aht21_hyst_humidify", float, "aht21_hyst_humidify"),
             ("aht21_hyst_protect",  float, "aht21_hyst_protect"),
             ("refreshrate",         int,   "refreshrate"),
-        ]
+        ] + [(attr, cast, attr) for attr, cast in COMPENSATION_FIELDS]
         for attr, cast, col in fields:
             new_val = cast(row[col])
             if getattr(state, attr) != new_val:
@@ -275,9 +315,11 @@ class StateManager:
         Schreibt die Konfigurationsfelder des State zurück in die DB.
         Wird aufgerufen wenn die API Konfigurationsänderungen empfängt.
         """
+        comp_set = "".join(f"{attr} = :{attr}, " for attr, _ in COMPENSATION_FIELDS)
         self._db.execute(
-            """
+            f"""
             UPDATE config SET
+                {comp_set}
                 power               = :power,
                 mode                = :mode,
                 target_temp         = :target_temp,
@@ -307,6 +349,7 @@ class StateManager:
                 "aht21_hyst_protect":  state.aht21_hyst_protect,
                 "refreshrate":         state.refreshrate,
                 "now":                 time.time(),
+                **{attr: getattr(state, attr) for attr, _ in COMPENSATION_FIELDS},
             },
         )
 

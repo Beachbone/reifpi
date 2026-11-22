@@ -149,6 +149,7 @@ def create_app(env: str | None = None) -> Flask:
         program_runner = program_runner,
         sensor_fail_threshold    = cfg.SENSOR_FAIL_THRESHOLD,
         compressor_protect_secs  = cfg.COMPRESSOR_PROTECT_SECS,
+        rate_window_secs         = cfg.RATE_WINDOW_SECS,
     )
     app.controller = controller  # type: ignore[attr-defined]
 

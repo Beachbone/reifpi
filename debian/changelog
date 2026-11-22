@@ -1,3 +1,19 @@
+reifpi (0.1.5) unstable; urgency=medium
+
+  * Neu: Nachlauf-Kompensation für Heizen, Kühlen und Befeuchten —
+    Offset (früher abschalten), Vorhaltzeit (Abschalten per Steigungs-
+    Prognose), Mindestpause je Aktor sowie Sperren Heizen nach Kühlen
+    und Kühlen nach Heizen. Alle Werte 0 = bisheriges Verhalten.
+    Schema v7, Einstellungsseite "Nachlauf-Kompensation".
+  * Neu: Steigung von Temperatur/Feuchte (temp_rate, hum_rate) in /api/status.
+  * Fix: Heizstart schaltete die Kühlung ab, ohne die Kompressor-
+    Schutzzeit zu setzen.
+  * Fix: Modus "nur Temperatur" ließ Befeuchter/Frischluft aus dem
+    Automatik-Betrieb eingeschaltet, Umluft folgte nicht Heizen/Kühlen.
+  * Tests: veraltete get_default_config() in test_phase1 ergänzt.
+
+ -- Jürgen Auerbach <J.Auerbach@b50.de>  Sun, 22 Nov 2026 16:00:00 +0100
+
 reifpi (0.1.4) unstable; urgency=medium
 
   * Fix: "apt remove" ließ das von postinst per pip erzeugte venv

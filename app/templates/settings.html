@@ -52,6 +52,63 @@
             </div>
         </div>
 
+        <!-- Nachlauf-Kompensation -->
+        <div class="settings-panel">
+            <h3>Nachlauf-Kompensation</h3>
+            <p class="settings-hint">
+                Heizung, Kühlung und Befeuchter wirken nach dem Abschalten nach.
+                Offset: Abschalten so viel vor dem Sollwert.
+                Vorhaltzeit: Abschalten, sobald der Wert bei aktuellem Tempo in dieser Zeit den Abschaltpunkt erreichen würde.
+                Der Offset wird auf die jeweilige Hysterese begrenzt. 0 = aus.
+            </p>
+            <div class="settings-grid">
+                <div class="settings-field">
+                    <label for="cfgOffsetCool">Offset Kühlen (°C)</label>
+                    <input type="number" id="cfgOffsetCool" step="0.1" min="0" max="10">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgOffsetHeat">Offset Heizen (°C)</label>
+                    <input type="number" id="cfgOffsetHeat" step="0.1" min="0" max="10">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgOffsetMois">Offset Befeuchten (%)</label>
+                    <input type="number" id="cfgOffsetMois" step="0.1" min="0" max="20">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgLeadCool">Vorhaltzeit Kühlen (Sek.)</label>
+                    <input type="number" id="cfgLeadCool" step="1" min="0" max="1800">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgLeadHeat">Vorhaltzeit Heizen (Sek.)</label>
+                    <input type="number" id="cfgLeadHeat" step="1" min="0" max="1800">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgLeadMois">Vorhaltzeit Befeuchten (Sek.)</label>
+                    <input type="number" id="cfgLeadMois" step="1" min="0" max="1800">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgMinOffCool">Mindestpause Kühlen (Sek., mind. Kompressor-Schutzzeit)</label>
+                    <input type="number" id="cfgMinOffCool" step="1" min="0" max="3600">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgMinOffHeat">Mindestpause Heizen (Sek.)</label>
+                    <input type="number" id="cfgMinOffHeat" step="1" min="0" max="3600">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgMinOffMois">Mindestpause Befeuchten (Sek.)</label>
+                    <input type="number" id="cfgMinOffMois" step="1" min="0" max="3600">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgLockHeatAfterCool">Heizsperre nach Kühlende (Sek.)</label>
+                    <input type="number" id="cfgLockHeatAfterCool" step="1" min="0" max="7200">
+                </div>
+                <div class="settings-field">
+                    <label for="cfgLockCoolAfterHeat">Kühlsperre nach Heizende (Sek.)</label>
+                    <input type="number" id="cfgLockCoolAfterHeat" step="1" min="0" max="7200">
+                </div>
+            </div>
+        </div>
+
         <!-- Außensensor -->
         <div class="settings-panel" id="panelExternSensor">
             <h3>Außensensor</h3>

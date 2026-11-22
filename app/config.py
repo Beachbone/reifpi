@@ -32,6 +32,7 @@ class BaseConfig:
     ARCHIVE_INTERVAL_SECS     = 300     # Archiv-Batching (5 Minuten)
     SENSOR_FAIL_THRESHOLD     = 3       # Fehler in Folge → Safe-Mode
     COMPRESSOR_PROTECT_SECS   = 300     # Kompressor-Schutzzeit (5 Minuten)
+    RATE_WINDOW_SECS          = 90      # Zeitfenster für Steigung (Vorhalt-Regelung)
 
     # ── GPIO-Standard-Pins (active-low Relais) ────────────────────────────────
     # Alle Pins können über die Settings-Seite in der DB überschrieben werden.
