@@ -169,13 +169,33 @@
                 </div>
                 <div class="status-item" data-control-id="power">
                     <div class="led" id="ledPower"></div>
-                    <img src="{{ url_for('static', filename='icons/power.png') }}" alt="Herunterfahren" id="picPower" class="pictogram-inactive">
+                    <img src="{{ url_for('static', filename='icons/power.png') }}" alt="Ausschalten / Neustart" id="picPower" class="pictogram-inactive">
                     <input type="checkbox" class="manual-control-checkbox" id="checkPower">
                 </div>
             </div>
         </div>
 
     </div><!-- /.control-panel -->
+
+    <!-- Ausschalten / Neustart -->
+    <dialog id="powerDialog" class="power-dialog" aria-labelledby="powerDialogTitle">
+        <h3 id="powerDialogTitle">Ausschalten oder neu starten?</h3>
+        <div class="power-options">
+            <button type="button" data-power="restart">
+                <strong>Steuerung neu starten</strong>
+                <span>Nur der Dienst, nach ca. 15&nbsp;s wieder da. Hebt auch einen Safe-Mode auf.</span>
+            </button>
+            <button type="button" data-power="reboot">
+                <strong>Pi neu starten</strong>
+                <span>Relais aus, nach ca. 1–2&nbsp;Minuten regelt er wieder.</span>
+            </button>
+            <button type="button" data-power="shutdown" class="power-danger">
+                <strong>Pi herunterfahren</strong>
+                <span>Alles aus. Wieder an nur durch Strom aus/ein am Gerät.</span>
+            </button>
+        </div>
+        <button type="button" class="power-cancel" id="btnPowerCancel">Abbrechen</button>
+    </dialog>
 
     <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 </body>

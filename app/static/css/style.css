@@ -901,3 +901,40 @@ body:has(.page-header) {
     }
     .page-header h1 { order: -1; }
 }
+
+/* --- Dialog Ausschalten / Neustart --- */
+.power-dialog {
+    width: min(26rem, calc(100vw - 32px));
+    padding: 20px;
+    border: none;
+    border-radius: 10px;
+    background: #2b2b2b;
+    color: #eee;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+.power-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+.power-dialog h3 { margin: 0 0 14px; }
+.power-options { display: flex; flex-direction: column; gap: 10px; }
+.power-options button {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    width: 100%;
+    min-height: 56px;
+    text-align: left;
+    background-color: #3a3a3a;
+    border: 1px solid #555;
+}
+.power-options button:hover,
+.power-options button:focus-visible { background-color: #00838f; }
+.power-options button span { font-size: 0.8em; color: #ccc; }
+.power-options .power-danger { border-color: #f44336; }
+.power-options .power-danger:hover,
+.power-options .power-danger:focus-visible { background-color: #b71c1c; }
+.power-cancel {
+    width: 100%;
+    margin-top: 14px;
+    background-color: transparent;
+    border: 1px solid #777;
+}

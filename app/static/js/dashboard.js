@@ -392,20 +392,53 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Power = Shutdown
-    checkPower.addEventListener('change', async () => {
+    // Power = Auswahl: Steuerung neu starten / Pi neu starten / herunterfahren
+    const powerDialog = document.getElementById('powerDialog');
+    const POWER_MSG = {
+        restart:  'Steuerung startet neu…',
+        reboot:   'Pi startet neu — ca. 1–2 Minuten.',
+        shutdown: 'Pi wird heruntergefahren…',
+    };
+    let shutdownArmed = null;
+
+    function disarmShutdown() {
+        clearTimeout(shutdownArmed);
+        shutdownArmed = null;
+        powerDialog.querySelector('[data-power="shutdown"] strong').textContent = 'Pi herunterfahren';
+    }
+
+    checkPower.addEventListener('change', () => {
         checkPower.checked = false; // Checkbox zurücksetzen
-        const ok = confirm(
-            'Raspberry Pi wirklich herunterfahren?\n\n' +
-            'Alle Relais werden ausgeschaltet.\n' +
-            'Der Pi muss anschließend physisch neu gestartet werden.'
-        );
-        if (!ok) return;
-        setLed(ledPower, picPower, false);
-        showMsg('Pi wird heruntergefahren…', 'warning', 10000);
-        try {
-            await fetch('/api/system/shutdown', { method: 'POST' });
-        } catch (_) { /* Verbindung bricht ab — erwartet */ }
+        disarmShutdown();
+        powerDialog.showModal();
+    });
+
+    document.getElementById('btnPowerCancel').addEventListener('click', () => powerDialog.close());
+    powerDialog.addEventListener('close', disarmShutdown);
+    // Klick auf den abgedunkelten Hintergrund schließt
+    powerDialog.addEventListener('click', (e) => { if (e.target === powerDialog) powerDialog.close(); });
+
+    powerDialog.querySelectorAll('[data-power]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const action = btn.dataset.power;
+            // Herunterfahren lässt sich aus der Ferne nicht rückgängig machen → zweimal tippen
+            if (action === 'shutdown' && !shutdownArmed) {
+                btn.querySelector('strong').textContent = 'Wirklich? Nochmal tippen';
+                shutdownArmed = setTimeout(disarmShutdown, 4000);
+                return;
+            }
+            powerDialog.close();
+            try {
+                const r = await fetch('/api/system/' + action, { method: 'POST' });
+                const j = await r.json().catch(() => ({}));
+                if (!r.ok) {
+                    showMsg('Fehler: ' + (j.error || r.status), 'error', 8000);
+                    return;
+                }
+            } catch (_) { /* Verbindung bricht ab — erwartet */ }
+            if (action !== 'restart') setLed(ledPower, picPower, false);
+            showMsg(POWER_MSG[action], 'warning', action === 'reboot' ? 30000 : 10000);
+        });
     });
 
     // Programm stoppen

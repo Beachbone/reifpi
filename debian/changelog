@@ -1,3 +1,16 @@
+reifpi (0.1.9) unstable; urgency=medium
+
+  * Power-Taste im Dashboard öffnet jetzt eine Auswahl: Steuerung neu
+    starten (nur der Dienst, hebt auch einen Safe-Mode auf), Pi neu
+    starten oder Pi herunterfahren (zweimal tippen).
+  * Fix: Herunterfahren funktionierte seit der Umstellung auf das Paket
+    nicht — sudo scheitert am NoNewPrivileges der Unit. Jetzt per
+    systemctl; die nötigen Rechte (nur Poweroff/Reboot und Neustart von
+    reifpi.service) gibt eine mitgelieferte polkit-Regel. Fehler werden
+    im Dashboard angezeigt statt still verschluckt.
+
+ -- Jürgen Auerbach <J.Auerbach@b50.de>  Mon, 23 Nov 2026 10:00:00 +0100
+
 reifpi (0.1.8) unstable; urgency=medium
 
   * Neu: Trockenlauf-Schutz für den Befeuchter. Läuft er

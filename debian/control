@@ -14,6 +14,7 @@ Depends: ${misc:Depends},
          python3-venv,
          python3-pip,
          systemd,
+         polkitd,
 Recommends: i2c-tools
 Description: ReifungsPi — Steuerung für Reifeschränke (Käse, Salami, Dry-Aging)
  Flask-basierte Steuerung für Raspberry-Pi-gesteuerte Reifeschränke und

@@ -46,7 +46,7 @@ def make():
     note  = FakeNotifier()
     ctrl  = ReifpiController(
         state=state, state_manager=sm,
-        sensor_manager=SensorManager(SimulatedSensor(15.0, 70.0), NoneSensor()),
+        sensor_manager=SensorManager(SimulatedSensor(15.0, 70.0, temp_noise=0, hum_noise=0), NoneSensor()),
         gpio=GpioManager({"fanu": 27, "cool": 23, "fana": 17, "mois": 22, "heat": 24}, dummy=True),
         archive_writer=ArchiveWriter(db, interval_secs=9999),
         program_runner=ProgramRunner(db),

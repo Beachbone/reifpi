@@ -2,6 +2,7 @@
 api/control.py — Steuerung: Modus, Sollwerte, Relais, Power, Safe-Mode-Reset.
 """
 
+import signal
 import subprocess
 
 from flask import Blueprint, current_app, jsonify, request
@@ -123,9 +124,42 @@ def reset_humidifier():
     return jsonify({"ok": True})
 
 
-@bp.post("/api/system/shutdown")
-def system_shutdown():
-    """Fährt den Raspberry Pi sauber herunter."""
-    current_app.controller.all_off_immediate()
-    subprocess.Popen(["sudo", "shutdown", "-h", "now"])
+# Aktion → (systemctl-Argumente, Relais vorher abschalten).
+# Die Rechte kommen aus der polkit-Regel des Pakets (debian/reifpi.polkit.rules),
+# sudo scheitert am NoNewPrivileges der Unit.
+_SYSTEM_ACTIONS = {
+    "shutdown": (["poweroff"], True),
+    "reboot":   (["reboot"], True),
+    "restart":  (["--no-block", "restart", "reifpi.service"], False),
+}
+
+
+@bp.post("/api/system/<action>")
+def system_action(action: str):
+    """Pi herunterfahren / neu starten oder nur die Steuerung neu starten."""
+    if action not in _SYSTEM_ACTIONS:
+        return jsonify({"error": f"Unbekannte Aktion: {action}"}), 404
+    args, relays_off = _SYSTEM_ACTIONS[action]
+
+    if current_app.config.get("GPIO_DUMMY"):
+        current_app.logger.warning(f"System-Aktion '{action}' im Dev-Modus übersprungen")
+        return jsonify({"ok": True, "simulated": True})
+
+    if relays_off:
+        current_app.controller.all_off_immediate()
+    try:
+        r = subprocess.run(
+            ["systemctl", "--no-ask-password", *args],
+            capture_output=True, text=True, timeout=15,
+        )
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return jsonify({"error": str(e)}), 500
+    # Beim Dienst-Neustart beendet systemd auch den systemctl-Aufruf
+    # (gleiche cgroup) — SIGTERM heißt hier: Auftrag angenommen.
+    restarting = action == "restart" and r.returncode == -signal.SIGTERM
+    if r.returncode != 0 and not restarting:
+        msg = (r.stderr or r.stdout).strip() or f"Exit-Code {r.returncode}"
+        current_app.logger.error(f"System-Aktion '{action}' fehlgeschlagen: {msg}")
+        return jsonify({"error": msg}), 500
+    current_app.logger.info(f"System-Aktion '{action}' ausgelöst")
     return jsonify({"ok": True})

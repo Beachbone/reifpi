@@ -1,0 +1,19 @@
+// reifpi: Der Dienstbenutzer darf vom Dashboard aus den Pi herunterfahren
+// bzw. neu starten und die eigene Steuerung neu starten — sonst nichts.
+// (sudo geht nicht: die Unit läuft mit NoNewPrivileges=true.)
+polkit.addRule(function(action, subject) {
+    if (subject.user !== "reifpi") {
+        return polkit.Result.NOT_HANDLED;
+    }
+    // power-off, power-off-multiple-sessions, power-off-ignore-inhibit, reboot…
+    if (action.id.indexOf("org.freedesktop.login1.power-off") === 0 ||
+        action.id.indexOf("org.freedesktop.login1.reboot") === 0) {
+        return polkit.Result.YES;
+    }
+    if (action.id === "org.freedesktop.systemd1.manage-units" &&
+        action.lookup("unit") === "reifpi.service" &&
+        action.lookup("verb") === "restart") {
+        return polkit.Result.YES;
+    }
+    return polkit.Result.NOT_HANDLED;
+});
