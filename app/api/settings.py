@@ -51,6 +51,9 @@ _ALLOWED_FIELDS: dict[str, type] = {
     # Trockenlauf-Schutz
     "mois_dry_check_min":        int,
     "mois_dry_min_rise":         float,
+    "mois_probe_interval_h":     int,
+    "mois_probe_secs":           int,
+    "mois_probe_min_rise":       float,
     # GPIO
     "gpio_pin_fanu":        int,
     "gpio_pin_cool":        int,
@@ -111,6 +114,9 @@ _RANGES: dict[str, tuple] = {
     "air_abort_hum_pct":         (1.0,  50.0),
     "mois_dry_check_min":        (0,    240),
     "mois_dry_min_rise":         (0.1,  20.0),
+    "mois_probe_interval_h":     (0,    168),
+    "mois_probe_secs":           (10,   600),
+    "mois_probe_min_rise":       (0.05, 5.0),
     "mail_port":           (1,   65535),
     "email_sleep":         (1,    1440),
     "arch_handling":       (100, 100000),

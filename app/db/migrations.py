@@ -13,7 +13,7 @@ from app.db.schema import ALL_TABLES
 
 logger = logging.getLogger(__name__)
 
-CURRENT_SCHEMA_VERSION = 9
+CURRENT_SCHEMA_VERSION = 10
 
 # Spalten der Nachlauf-Kompensation (v7) — alle mit Default 0 = aus
 _V7_COLUMNS = (
@@ -45,6 +45,14 @@ _V9_COLUMNS = (
     ("mois_dry_check_min", "INTEGER", "15"),
     ("mois_dry_min_rise",  "REAL",    "1.0"),
     ("mois_fault_since",   "REAL",    "0"),
+)
+
+# Spalten des aktiven Befeuchtertests (v10): (Name, Typ, Default)
+_V10_COLUMNS = (
+    ("mois_probe_interval_h", "INTEGER", "6"),
+    ("mois_probe_secs",       "INTEGER", "40"),
+    ("mois_probe_min_rise",   "REAL",    "0.3"),
+    ("mois_probe_last",       "REAL",    "0"),
 )
 
 
@@ -92,6 +100,9 @@ def apply_migrations(db: Database, default_config: dict) -> None:
         if current_version < 9:
             _migrate_v8_to_v9(db)
             _set_schema_version(db, 9)
+        if current_version < 10:
+            _migrate_v9_to_v10(db)
+            _set_schema_version(db, 10)
         logger.info("Migration abgeschlossen.")
 
     logger.info(f"Datenbankschema Version {CURRENT_SCHEMA_VERSION} — OK.")
@@ -216,6 +227,16 @@ def _migrate_v8_to_v9(db: Database) -> None:
             logger.info(f"Migration v9: {col} Spalte hinzugefügt.")
         except Exception as e:
             logger.warning(f"Migration v9 ({col}) übersprungen: {e}")
+
+
+def _migrate_v9_to_v10(db: Database) -> None:
+    """v9 → v10: aktiver Befeuchtertest."""
+    for col, sql_type, default in _V10_COLUMNS:
+        try:
+            db.execute(f"ALTER TABLE config ADD COLUMN {col} {sql_type} NOT NULL DEFAULT {default}")
+            logger.info(f"Migration v10: {col} Spalte hinzugefügt.")
+        except Exception as e:
+            logger.warning(f"Migration v10 ({col}) übersprungen: {e}")
 
 
 def _init_config(db: Database, defaults: dict) -> None:

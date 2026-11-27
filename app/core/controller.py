@@ -20,6 +20,7 @@ from app.core.sensors import SensorManager
 from app.core.gpio_manager import GpioManager
 from app.core.program_runner import ProgramRunner
 from app.core.air_exchange import AirExchange, ACTIVE, ENDED, IDLE
+from app.core.humidifier_probe import HumidifierProbe, PULSE, SETTLE, FAILED
 from app.db.archive_writer import ArchiveWriter
 from app.utils.physics import outside_is_wetter, outside_is_drier
 
@@ -56,6 +57,7 @@ class ReifpiController:
         compressor_protect_secs: int = 300,
         rate_window_secs: int = 90,
         air_exchange: AirExchange | None = None,
+        humidifier_probe: HumidifierProbe | None = None,
     ) -> None:
         self._state          = state
         self._state_mgr      = state_manager
@@ -68,6 +70,7 @@ class ReifpiController:
         self._comp_protect   = compressor_protect_secs
         self._rate_window    = rate_window_secs
         self._air            = air_exchange   # None = kein geplanter Luftwechsel
+        self._probe          = humidifier_probe   # None = kein Befeuchtertest
         # Messverlauf Innensensor für die Steigung: (timestamp, temp, hum)
         self._history: deque[tuple[float, float, float]] = deque()
 
@@ -135,27 +138,22 @@ class ReifpiController:
         # 3. Regelung oder Safe-Mode
         if self._state.safe_mode:
             self._cancel_air_exchange()
+            self._cancel_probe()
             self._apply_safe_mode()
         elif self._state.mode == MODE_MEASURE_ONLY:
             self._cancel_air_exchange()
+            self._cancel_probe()
             self._all_relays_off()
         elif self._state.mode == MODE_MANUAL:
             self._cancel_air_exchange()   # Im Manuell-Modus keine automatische Regelung
+            self._cancel_probe()
         else:
             # 4. Reifeprogramm prüfen — neue Sollwerte sofort speichern,
             #    sonst setzt reload_config() sie im nächsten Zyklus zurück
             if self._programs.check_and_advance(self._state):
                 self._state_mgr.persist_config(self._state)
-            # 5. Regeln; ein laufender Luftwechsel erzwingt danach
-            #    Frischluft + Umluft, die Regelung gleicht weiter aus
-            now = time.time()
-            air = self._update_air_exchange(now)
-            self._regulate()
-            if air == ACTIVE:
-                self._state.relay_fana = True
-                self._state.relay_fanu = True
-            # 6. Trockenlauf-Schutz: Befeuchter an, Feuchte steigt nicht?
-            self._check_humidifier(now)
+            # 5. Regeln (inkl. Luftwechsel, Befeuchtertest, Trockenlauf-Schutz)
+            self._regulate_step(time.time())
 
         # 6. GPIO-Ausgänge setzen
         self._gpio.apply_state(self._state)
@@ -166,6 +164,27 @@ class ReifpiController:
         # 8. Archiv-Buffer befüllen + ggf. flushen (SD, gebatcht)
         self._archive.add(self._state)
         self._archive.maybe_flush()
+
+    def _regulate_step(self, now: float) -> None:
+        """
+        Regeln; ein laufender Luftwechsel erzwingt danach Frischluft + Umluft
+        (die Regelung gleicht weiter aus), ein Befeuchtertest seinen Puls
+        ohne Frischluft. Zum Schluss der Trockenlauf-Schutz.
+        """
+        air   = self._update_air_exchange(now)
+        probe = self._update_probe(now)
+        self._regulate()
+        s = self._state
+        if air == ACTIVE:
+            s.relay_fana = True
+            s.relay_fanu = True
+        elif probe in (PULSE, SETTLE):
+            s.relay_mois = probe == PULSE
+            s.relay_fana = False
+            s.relay_fanu = True
+            if probe == SETTLE:
+                s.mois_last_off = s.mois_probe_pulse_end
+        self._check_humidifier(now)
 
     # ── Sensor-Lesen ─────────────────────────────────────────────────────────
 
@@ -229,10 +248,14 @@ class ReifpiController:
             return
 
         de = lambda v: f"{v:.1f}".replace(".", ",")
-        reason = (
+        self._set_mois_fault(now, (
             f"Befeuchter lief {s.mois_dry_check_min} min, die Luftfeuchte stieg "
             f"nur um {de(rise)} %rF ({de(s.mois_on_min_hum)} → {de(s.hum_intern)} %)"
-        )
+        ))
+
+    def _set_mois_fault(self, now: float, reason: str) -> None:
+        """Befeuchter sperren (übersteht Neustarts) und melden."""
+        s = self._state
         logger.error(f"Trockenlauf-Schutz: {reason}")
         s.mois_fault        = True
         s.mois_fault_since  = now
@@ -264,6 +287,8 @@ class ReifpiController:
             s.mois_fault_reason = ""
             s.mois_on_since     = None
             s.mois_on_min_hum   = None
+            if self._probe is not None:
+                self._probe.after_reset(s, time.time())
             self._state_mgr.persist_runtime(mois_fault_since=0)
             self._state_mgr.write_state_file(s)
             logger.info("Befeuchter wieder freigegeben.")
@@ -284,6 +309,29 @@ class ReifpiController:
         if self._air is not None and self._state.air_active:
             self._air.cancel(self._state, time.time())
             self._state.relay_fana = False
+
+    def _update_probe(self, now: float) -> str:
+        """Befeuchtertest (PULSE/SETTLE: Aufrufer erzwingt die Relais)."""
+        if self._probe is None:
+            return IDLE
+        if self._state.mode != MODE_AUTO:
+            self._cancel_probe()
+            return IDLE
+        result = self._probe.update(self._state, now)
+        if result == FAILED:
+            s = self._state
+            self._set_mois_fault(now, (
+                f"Befeuchtertest: Nach {s.mois_probe_secs} s Befeuchten stieg die "
+                f"absolute Feuchte zweimal hintereinander kaum "
+                f"({s.mois_probe_result.replace('kein Anstieg ', '')}, "
+                f"nötig {str(s.mois_probe_min_rise).replace('.', ',')} g/m³)"
+            ))
+            return IDLE
+        return result
+
+    def _cancel_probe(self) -> None:
+        if self._probe is not None:
+            self._probe.cancel(self._state, time.time())
 
     # ── Regellogik ────────────────────────────────────────────────────────────
 
@@ -413,6 +461,10 @@ class ReifpiController:
         if s.mois_fault:
             # Trockenlauf erkannt: gesperrt bis zur Freigabe im Dashboard
             s.relay_mois = False
+        elif s.mois_probe_active:
+            # Befeuchtertest steuert Befeuchter und Frischluft selbst
+            s.relay_fanu = True
+            return
         elif hum < mois_on_at:
             if s.relay_mois:
                 pass
@@ -586,6 +638,9 @@ class ReifpiController:
             if self._air is not None and "air_interval_h" in kwargs:
                 self._state.air_next_due = None
                 self._air.schedule(self._state, time.time())
+            if self._probe is not None and "mois_probe_interval_h" in kwargs:
+                self._state.mois_probe_next_due = None
+                self._probe.schedule(self._state, time.time())
             self._state_mgr.persist_config(self._state)
             self._state_mgr.write_state_file(self._state)
 

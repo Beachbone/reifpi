@@ -22,6 +22,7 @@ from app.core.sensors     import build_sensor_manager
 from app.core.program_runner import ProgramRunner
 from app.core.controller  import ReifpiController
 from app.core.air_exchange import AirExchange
+from app.core.humidifier_probe import HumidifierProbe
 from app.notifications.dispatcher import NotificationDispatcher
 
 
@@ -153,6 +154,7 @@ def create_app(env: str | None = None) -> Flask:
         compressor_protect_secs  = cfg.COMPRESSOR_PROTECT_SECS,
         rate_window_secs         = cfg.RATE_WINDOW_SECS,
         air_exchange             = AirExchange(db),
+        humidifier_probe         = HumidifierProbe(db),
         notifier                 = NotificationDispatcher(db),
     )
     app.controller = controller  # type: ignore[attr-defined]

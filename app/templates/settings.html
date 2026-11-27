@@ -107,6 +107,20 @@
                         <label for="cfgMoisDryRise">Mindestanstieg <span class="sp-unit">%rF</span></label>
                         <input type="number" id="cfgMoisDryRise" data-stepper inputmode="decimal" step="0.5" min="0.5" max="20">
                     </div>
+                    <p class="sp-rule">Befeuchtertest: In einer ruhigen Phase (Kühlen/Heizen seit 20 min aus, keine Frischluft) läuft der Befeuchter kurz, danach wird 1 min nachgemessen. Steigt die absolute Feuchte zweimal hintereinander nicht um den Mindestanstieg, wird er gesperrt und gemeldet. Intervall 0 = aus.</p>
+                    <p class="sp-status" id="probeStatus" aria-live="polite">—</p>
+                    <div class="sp-field">
+                        <label for="cfgProbeInterval">Test-Intervall <span class="sp-unit">h</span></label>
+                        <input type="number" id="cfgProbeInterval" data-stepper inputmode="numeric" step="1" min="0" max="168">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgProbeSecs">Testpuls <span class="sp-unit">s</span></label>
+                        <input type="number" id="cfgProbeSecs" data-stepper inputmode="numeric" step="10" min="10" max="600">
+                    </div>
+                    <div class="sp-field">
+                        <label for="cfgProbeRise">Mindestanstieg <span class="sp-unit">g/m³ abs. Feuchte</span></label>
+                        <input type="number" id="cfgProbeRise" data-stepper inputmode="decimal" step="0.05" min="0.05" max="5">
+                    </div>
                 </section>
 
                 <section class="sp-card" aria-labelledby="h-fana">

@@ -1,3 +1,22 @@
+reifpi (0.1.10) unstable; urgency=medium
+
+  * Neu: Aktiver Befeuchtertest. Alle mois_probe_interval_h Stunden (6)
+    läuft der Befeuchter in einer ruhigen Phase (Kühlen/Heizen seit
+    20 min aus, keine Frischluft, kein Luftwechsel) für mois_probe_secs
+    (40 s), danach 1 min Nachmessen ohne Frischluft. Steigt die absolute
+    Feuchte zweimal hintereinander um weniger als mois_probe_min_rise
+    (0,3 g/m³), wird der Befeuchter gesperrt und gemeldet. Nach der
+    Freigabe folgt nach 10 min ein Test. Schema v10.
+  * Testpuls 40 s statt 60 s: Mit Wasser steigt die absolute Feuchte
+    so um etwa 0,6–0,75 g/m³ (doppelte Grenze), die Feuchtespitze
+    beim Test fällt kleiner aus (60 s: kurz 84–87 %rF).
+  * Grund: Der passive Trockenlauf-Schutz hat am 23.11. einen leeren
+    Tank nicht erkannt — der Befeuchter läuft fast nur nach dem Kühlen,
+    und dann steigt die Feuchte auch ohne Wasser (Kondensat verdunstet,
+    Frischluft). Der passive Schutz bleibt zusätzlich aktiv.
+
+ -- Jürgen Auerbach <J.Auerbach@b50.de>  Mon, 23 Nov 2026 19:45:00 +0100
+
 reifpi (0.1.9) unstable; urgency=medium
 
   * Power-Taste im Dashboard öffnet jetzt eine Auswahl: Steuerung neu

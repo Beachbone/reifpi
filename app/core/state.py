@@ -47,6 +47,10 @@ AIR_FIELDS: tuple[tuple[str, type], ...] = (
     # Trockenlauf-Schutz Befeuchter
     ("mois_dry_check_min",        int),
     ("mois_dry_min_rise",         float),
+    # Aktiver Befeuchtertest
+    ("mois_probe_interval_h",     int),
+    ("mois_probe_secs",           int),
+    ("mois_probe_min_rise",       float),
 )
 
 
@@ -91,6 +95,11 @@ class SystemState:
     # ── Trockenlauf-Schutz Befeuchter (mois_dry_check_min = 0: aus) ─────────
     mois_dry_check_min:        int   = 15
     mois_dry_min_rise:         float = 1.0
+
+    # ── Aktiver Befeuchtertest (mois_probe_interval_h = 0: aus) ─────────────
+    mois_probe_interval_h:     int   = 6
+    mois_probe_secs:           int   = 40
+    mois_probe_min_rise:       float = 0.3          # g/m³ absolute Feuchte
 
     # ── GPIO-Pins (aus Config, Neustart erforderlich bei Änderung) ───────────
     gpio_pin_fanu:          int   = 27
@@ -149,6 +158,18 @@ class SystemState:
     mois_fault_reason:      str   = ""
     mois_on_since:          float | None = None  # ununterbrochen an seit
     mois_on_min_hum:        float | None = None  # tiefste Feuchte seitdem
+
+    # ── Befeuchtertest (Laufzeit) ────────────────────────────────────────────
+    mois_probe_last:        float = 0.0          # aus DB, letzter bestandener
+    mois_probe_active:      bool  = False
+    mois_probe_started:     float | None = None
+    mois_probe_pulse_end:   float | None = None
+    mois_probe_end:         float | None = None
+    mois_probe_ah_start:    float | None = None
+    mois_probe_ah_max:      float | None = None
+    mois_probe_fails:       int   = 0            # Fehlschläge in Folge
+    mois_probe_next_due:    float | None = None
+    mois_probe_result:      str   = ""
 
     # ── Safe-Mode ─────────────────────────────────────────────────────────────
     safe_mode:              bool  = False
@@ -228,6 +249,7 @@ class StateManager:
             setattr(state, attr, cast(row[attr]))
         state.air_last_exchange = float(row["air_last_exchange"])
         state.mois_fault_since  = float(row["mois_fault_since"])
+        state.mois_probe_last   = float(row["mois_probe_last"])
         if state.mois_fault_since:
             state.mois_fault        = True
             state.mois_fault_reason = "Trockenlauf erkannt (vor dem Neustart)"

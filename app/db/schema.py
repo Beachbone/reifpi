@@ -73,6 +73,15 @@ CREATE TABLE IF NOT EXISTS config (
     mois_fault_since        REAL    NOT NULL DEFAULT 0,
     -- Laufzeitwert: Sperre seit (Unix-Zeit), 0 = frei
 
+    -- Aktiver Befeuchtertest (mois_probe_interval_h = 0: aus)
+    mois_probe_interval_h   INTEGER NOT NULL DEFAULT 6,
+    mois_probe_secs         INTEGER NOT NULL DEFAULT 40,
+    -- Testpuls in ruhiger Phase ...
+    mois_probe_min_rise     REAL    NOT NULL DEFAULT 0.3,
+    -- ... muss die absolute Feuchte so weit heben [g/m³]
+    mois_probe_last         REAL    NOT NULL DEFAULT 0,
+    -- Laufzeitwert: letzter bestandener Test (Unix-Zeit)
+
     -- Steuerung
     refreshrate             INTEGER NOT NULL DEFAULT 30,
     -- Regelzyklus in Sekunden

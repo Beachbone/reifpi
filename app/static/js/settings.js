@@ -43,6 +43,9 @@ document.addEventListener('DOMContentLoaded', () => {
         cfgLockCoolAfterHeat: 'lock_secs_cool_after_heat',
         cfgMoisDryCheck:      'mois_dry_check_min',
         cfgMoisDryRise:       'mois_dry_min_rise',
+        cfgProbeInterval:     'mois_probe_interval_h',
+        cfgProbeSecs:         'mois_probe_secs',
+        cfgProbeRise:         'mois_probe_min_rise',
         cfgAirInterval:       'air_interval_h',
         cfgAirDuration:       'air_duration_min',
         cfgAirShort:          'air_short_pct',
@@ -444,6 +447,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (st.air_last_result) text += ` · Zuletzt: ${st.air_last_result}`;
             el.textContent = text;
+
+            const pe = document.getElementById('probeStatus');
+            if (pe) {
+                let p;
+                if (!st.mois_probe_interval_h)  p = 'Aus';
+                else if (st.mois_fault)         p = 'Befeuchter gesperrt – Test nach Freigabe';
+                else if (st.mois_probe_active)  p = 'Test läuft …';
+                else if (st.mois_probe_next_due) p = `Nächster: ab ${fmt(st.mois_probe_next_due)}, sobald ruhig`;
+                else                             p = 'Aktiv – Termin wird berechnet …';
+                if (st.mois_probe_result) p += ` · Zuletzt: ${st.mois_probe_result}`;
+                pe.textContent = p;
+            }
         } catch (e) { /* nicht kritisch */ }
     }
 
