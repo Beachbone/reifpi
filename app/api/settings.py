@@ -119,7 +119,7 @@ _RANGES: dict[str, tuple] = {
     "mois_probe_min_rise":       (0.05, 5.0),
     "mail_port":           (1,   65535),
     "email_sleep":         (1,    1440),
-    "arch_handling":       (100, 100000),
+    "arch_handling":       (100, 1000000),
 }
 
 

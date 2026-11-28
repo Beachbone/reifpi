@@ -1,3 +1,15 @@
+reifpi (0.1.11) unstable; urgency=medium
+
+  * Archiv: Höchstzahl Einträge bis 1 000 000 einstellbar (vorher
+    100 000, also gut 11 Tage bei 10 s). Hinweis auf der Einstellungsseite,
+    wie viele Einträge einem Tag entsprechen.
+  * Diagramme: Ausdünnen jetzt in SQLite (jede n-te Zeile plus erster und
+    letzter Punkt) statt alle Zeilen nach Python zu holen. 30 Tage Archiv
+    auf dem Pi 3: 0,4 s statt gut 5 s.
+  * Tests: tests/test_archive_api.py.
+
+ -- Jürgen Auerbach <J.Auerbach@b50.de>  Sat, 28 Nov 2026 09:30:00 +0100
+
 reifpi (0.1.10) unstable; urgency=medium
 
   * Neu: Aktiver Befeuchtertest. Alle mois_probe_interval_h Stunden (6)

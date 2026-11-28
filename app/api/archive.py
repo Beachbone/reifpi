@@ -9,6 +9,20 @@ bp = Blueprint("archive", __name__)
 
 _MAX_HOURS = 8760   # 1 Jahr
 
+_COLUMNS = """
+    timestamp       AS ts,
+    temp_intern     AS temp,
+    hum_intern      AS hum,
+    weight,
+    target_temp,
+    target_hum,
+    relay_heat,
+    relay_cool,
+    relay_mois,
+    relay_fanu,
+    relay_fana
+"""
+
 
 @bp.get("/api/archive")
 def get_archive():
@@ -30,39 +44,39 @@ def get_archive():
     if not (1 <= hours <= _MAX_HOURS):
         return jsonify({"error": f"'hours' muss zwischen 1 und {_MAX_HOURS} liegen"}), 400
 
-    since = time.time() - hours * 3600
-    db    = current_app.db
-
-    rows = db.fetchall(
-        """
-        SELECT timestamp       AS ts,
-               temp_intern     AS temp,
-               hum_intern      AS hum,
-               weight,
-               target_temp,
-               target_hum,
-               relay_heat,
-               relay_cool,
-               relay_mois,
-               relay_fanu,
-               relay_fana
-        FROM   state_archive
-        WHERE  timestamp >= ?
-        ORDER  BY timestamp ASC
-        """,
-        (since,),
-    )
-
-    # Optionales Client-seitiges Downsampling
+    # Optionales Downsampling
     limit = request.args.get("limit")
     if limit is not None:
         try:
             limit = int(limit)
         except (ValueError, TypeError):
             return jsonify({"error": "'limit' muss eine ganze Zahl sein"}), 400
-        if limit < 2:
-            return jsonify({"error": "'limit' muss ≥ 2 sein"}), 400
-        rows = _downsample(rows, limit)
+        if limit < 3:
+            return jsonify({"error": "'limit' muss ≥ 3 sein"}), 400
+
+    since = time.time() - hours * 3600
+    db    = current_app.db
+
+    # Bei großem Archiv (30 Tage ≈ 260 000 Zeilen) schon in SQLite
+    # ausdünnen: jede step-te id plus erster und letzter Punkt. Auf dem
+    # Pi 3 0,4 s statt 5 s für alle Zeilen (ROW_NUMBER() wäre 5 s).
+    n    = db.fetchscalar(
+        "SELECT COUNT(*) FROM state_archive WHERE timestamp >= ?", (since,)
+    ) or 0
+    step = -(-n // (limit - 2)) if limit and n > limit else 1
+
+    rows = db.fetchall(
+        f"""
+        SELECT {_COLUMNS}
+        FROM   state_archive
+        WHERE  timestamp >= :since
+          AND  (id % :step = 0
+                OR id = (SELECT MIN(id) FROM state_archive WHERE timestamp >= :since)
+                OR id = (SELECT MAX(id) FROM state_archive))
+        ORDER  BY timestamp ASC
+        """,
+        {"since": since, "step": step},
+    )
 
     return jsonify([dict(r) for r in rows])
 
@@ -87,17 +101,3 @@ def get_archive_count():
         "oldest":   oldest,
         "newest":   newest,
     })
-
-
-# ── Hilfsfunktionen ───────────────────────────────────────────────────────────
-
-def _downsample(rows: list, limit: int) -> list:
-    """
-    Gleichmäßiges Ausdünnen: behält ~`limit` Datenpunkte.
-    Ersten und letzten Punkt immer beibehalten.
-    """
-    n = len(rows)
-    if n <= limit:
-        return rows
-    step = n / limit
-    return [rows[int(i * step)] for i in range(limit - 1)] + [rows[-1]]

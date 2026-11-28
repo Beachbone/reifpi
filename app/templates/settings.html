@@ -312,9 +312,10 @@
             <div class="sp-cards">
                 <section class="sp-card" aria-labelledby="h-arch">
                     <h2 id="h-arch"><img src="{{ url_for('static', filename='icons/database.png') }}" alt="" class="sp-icon">Archiv</h2>
+                    <p class="sp-rule">Ältere Einträge werden gelöscht. Bei einer Messung alle 10 s sind 8 640 Einträge ein Tag, 259 200 etwa 30 Tage.</p>
                     <div class="sp-field">
                         <label for="cfgArchHandling">Höchstzahl Einträge</label>
-                        <input type="number" id="cfgArchHandling" data-stepper inputmode="numeric" step="1000" min="100" max="100000">
+                        <input type="number" id="cfgArchHandling" data-stepper inputmode="numeric" step="1000" min="100" max="1000000">
                     </div>
                     <dl class="sp-dbinfo">
                         <div><dt>Einträge gesamt</dt><dd id="dbTotal">—</dd></div>
